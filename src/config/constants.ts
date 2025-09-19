@@ -46,6 +46,25 @@ export const INPUT_FIELD_MAP: Record<string, InputField> = {
     transform: (val: string) => parseInt(val, 10),
   },
   platform: { envVar: 'INPUT_PLATFORM', required: false },
+  // LLM Provider inputs
+  llmProvider: { envVar: 'INPUT_LLM_PROVIDER', required: false },
+  llmApiKey: { envVar: 'INPUT_LLM_API_KEY', required: false },
+  llmBaseUrl: { envVar: 'INPUT_LLM_BASE_URL', required: false },
+  llmTemperature: {
+    envVar: 'INPUT_LLM_TEMPERATURE',
+    required: false,
+    transform: (val: string) => parseFloat(val),
+  },
+  llmMaxTokens: {
+    envVar: 'INPUT_LLM_MAX_TOKENS',
+    required: false,
+    transform: (val: string) => parseInt(val, 10),
+  },
+  llmTimeout: {
+    envVar: 'INPUT_LLM_TIMEOUT',
+    required: false,
+    transform: (val: string) => parseInt(val, 10),
+  },
 };
 
 export const TEMPLATE_CONFIG = {

@@ -9,6 +9,7 @@ import { spawn, SpawnOptions } from 'child_process';
 import process from 'process';
 import { ValidationUtils } from './utils/validation.js';
 import { TemplateProcessor } from './template/template-processor.js';
+import { LLMFactory } from './services/llm/llm-factory.js';
 import { logger } from './utils/logger.js';
 import { ActionInputs } from './types/inputs.js';
 
@@ -93,11 +94,12 @@ async function processTemplate(inputs: ActionInputs): Promise<string> {
 }
 
 /**
- * Run the augment script with appropriate arguments
+ * Run the LLM with appropriate provider
  */
-async function runAugmentScript(inputs: ActionInputs): Promise<void> {
+async function runLLM(inputs: ActionInputs): Promise<void> {
   let instruction_value: string;
   let is_file: boolean;
+  
   if (inputs.instruction) {
     instruction_value = inputs.instruction;
     is_file = false;
@@ -113,6 +115,24 @@ async function runAugmentScript(inputs: ActionInputs): Promise<void> {
       instructionFile: instruction_value,
     });
   }
+
+  // Determine LLM provider
+  const providerType = inputs.llmProvider || 'auggie';
+  logger.info(`🤖 Using LLM provider: ${providerType}`);
+
+  if (providerType === 'auggie') {
+    // Use existing Auggie CLI approach for backward compatibility
+    await runAuggieScript(inputs, instruction_value, is_file);
+  } else {
+    // Use new LLM provider system
+    await runCustomLLM(inputs, instruction_value, is_file);
+  }
+}
+
+/**
+ * Run Auggie script with appropriate arguments (backward compatibility)
+ */
+async function runAuggieScript(inputs: ActionInputs, instruction_value: string, is_file: boolean): Promise<void> {
   const args = ['--print'];
   if (inputs.model && inputs.model.trim().length > 0) {
     args.push('--model', inputs.model.trim());
@@ -130,6 +150,57 @@ async function runAugmentScript(inputs: ActionInputs): Promise<void> {
 }
 
 /**
+ * Run custom LLM provider
+ */
+async function runCustomLLM(inputs: ActionInputs, instruction_value: string, is_file: boolean): Promise<void> {
+  try {
+    // Create LLM provider
+    const llmProvider = LLMFactory.createProvider(inputs.llmProvider!, {
+      apiKey: inputs.llmApiKey!,
+      baseUrl: inputs.llmBaseUrl,
+      model: inputs.model || undefined,
+      temperature: inputs.llmTemperature,
+      maxTokens: inputs.llmMaxTokens,
+      timeout: inputs.llmTimeout
+    });
+
+    // Validate configuration
+    if (!llmProvider.validateConfig()) {
+      throw new Error(`Invalid configuration for ${llmProvider.getProviderName()} provider`);
+    }
+
+    // Read instruction content if it's a file
+    let instructionContent = instruction_value;
+    if (is_file) {
+      const fs = await import('fs/promises');
+      instructionContent = await fs.readFile(instruction_value, 'utf-8');
+    }
+
+    logger.info(`🚀 Generating response with ${llmProvider.getProviderName()}`);
+    
+    // Generate response
+    const response = await llmProvider.generateResponse(instructionContent);
+    
+    // Output the response
+    console.log(response.content);
+    
+    // Log usage information if available
+    if (response.usage) {
+      logger.info('📊 Token usage', {
+        promptTokens: response.usage.promptTokens,
+        completionTokens: response.usage.completionTokens,
+        totalTokens: response.usage.totalTokens
+      });
+    }
+    
+    logger.info('✅ Augment Agent completed successfully');
+  } catch (error) {
+    logger.error('Custom LLM provider failed', error);
+    throw error;
+  }
+}
+
+/**
  * Main function
  */
 async function main(): Promise<void> {
@@ -141,7 +212,7 @@ async function main(): Promise<void> {
     setupEnvironment(inputs);
 
     logger.info('🚀 Starting Augment Agent...');
-    await runAugmentScript(inputs);
+    await runLLM(inputs);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.setFailed(errorMessage);

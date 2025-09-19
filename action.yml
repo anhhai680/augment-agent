@@ -68,6 +68,28 @@ inputs:
   azure_devops_build_id:
     description: "Azure DevOps build ID for context extraction"
     required: false
+  llm_provider:
+    description: "LLM provider to use (auggie, openai, claude, google)"
+    required: false
+    default: "auggie"
+  llm_api_key:
+    description: "API key for the selected LLM provider. Store as repository secret for security."
+    required: false
+  llm_base_url:
+    description: "Base URL for the LLM provider API (for custom endpoints)"
+    required: false
+  llm_temperature:
+    description: "Temperature setting for LLM generation (0.0 to 2.0)"
+    required: false
+    default: "0.7"
+  llm_max_tokens:
+    description: "Maximum tokens for LLM response"
+    required: false
+    default: "4000"
+  llm_timeout:
+    description: "Timeout for LLM API requests in milliseconds"
+    required: false
+    default: "30000"
 
 runs:
   using: "composite"
@@ -107,3 +129,9 @@ runs:
         INPUT_AZURE_DEVOPS_PULL_REQUEST_ID: ${{ inputs.azure_devops_pull_request_id }}
         INPUT_AZURE_DEVOPS_WORK_ITEM_ID: ${{ inputs.azure_devops_work_item_id }}
         INPUT_AZURE_DEVOPS_BUILD_ID: ${{ inputs.azure_devops_build_id }}
+        INPUT_LLM_PROVIDER: ${{ inputs.llm_provider }}
+        INPUT_LLM_API_KEY: ${{ inputs.llm_api_key }}
+        INPUT_LLM_BASE_URL: ${{ inputs.llm_base_url }}
+        INPUT_LLM_TEMPERATURE: ${{ inputs.llm_temperature }}
+        INPUT_LLM_MAX_TOKENS: ${{ inputs.llm_max_tokens }}
+        INPUT_LLM_TIMEOUT: ${{ inputs.llm_timeout }}

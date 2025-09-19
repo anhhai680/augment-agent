@@ -36,6 +36,13 @@ const ActionInputsSchema = z
     azureDevOpsPullRequestId: z.number().int().positive('Azure DevOps pull request ID must be a positive integer').optional(),
     azureDevOpsWorkItemId: z.number().int().positive('Azure DevOps work item ID must be a positive integer').optional(),
     azureDevOpsBuildId: z.number().int().positive('Azure DevOps build ID must be a positive integer').optional(),
+    // LLM Provider fields
+    llmProvider: z.enum(['auggie', 'openai', 'claude', 'google']).default('auggie'),
+    llmApiKey: z.string().optional(),
+    llmBaseUrl: z.string().optional(),
+    llmTemperature: z.number().min(0).max(2).default(0.7),
+    llmMaxTokens: z.number().int().positive('Max tokens must be a positive integer').default(4000),
+    llmTimeout: z.number().int().positive('Timeout must be a positive integer').default(30000),
   })
   .refine(
     (data: any) => {
@@ -175,6 +182,38 @@ const ActionInputsSchema = z
     {
       message: 'Azure DevOps platform requires at least one context ID (azure_devops_pull_request_id, azure_devops_work_item_id, or azure_devops_build_id)',
       path: ['platform'],
+    }
+  )
+  .refine(
+    (data: any) => {
+      // If LLM provider is not auggie, validate API key is provided
+      if (data.llmProvider !== 'auggie') {
+        return !!(data.llmApiKey && data.llmApiKey.trim().length > 0);
+      }
+      return true;
+    },
+    {
+      message: 'LLM provider requires API key when not using auggie',
+      path: ['llmProvider'],
+    }
+  )
+  .refine(
+    (data: any) => {
+      // Validate API key format based on provider
+      if (data.llmProvider === 'openai' && data.llmApiKey) {
+        return data.llmApiKey.startsWith('sk-');
+      }
+      if (data.llmProvider === 'claude' && data.llmApiKey) {
+        return data.llmApiKey.startsWith('sk-ant-');
+      }
+      if (data.llmProvider === 'google' && data.llmApiKey) {
+        return data.llmApiKey.length > 20; // Google API keys are typically longer
+      }
+      return true;
+    },
+    {
+      message: 'Invalid API key format for the selected LLM provider',
+      path: ['llmApiKey'],
     }
   );
 

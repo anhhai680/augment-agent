@@ -148,13 +148,96 @@ When using `platform: "azure-devops"`, templates have access to Azure DevOps spe
 | `azure_devops_pull_request_id` | Azure DevOps pull request ID for context extraction | No | `123` |
 | `azure_devops_work_item_id` | Azure DevOps work item ID for context extraction   | No | `456` |
 | `azure_devops_build_id` | Azure DevOps build ID for context extraction        | No | `789` |
+| `llm_provider` | LLM provider to use (auggie, openai, claude, google) | No | `"auggie"` |
+| `llm_api_key` | API key for the selected LLM provider (store as secret) | No | `${{ secrets.OPENAI_API_KEY }}` |
+| `llm_base_url` | Base URL for the LLM provider API (for custom endpoints) | No | `"https://api.openai.com/v1"` |
+| `llm_temperature` | Temperature setting for LLM generation (0.0 to 2.0) | No | `"0.7"` |
+| `llm_max_tokens` | Maximum tokens for LLM response | No | `"4000"` |
+| `llm_timeout` | Timeout for LLM API requests in milliseconds | No | `"30000"` |
 
 \*Either `instruction`, `instruction_file`, or `template_directory` must be provided.
 
 \*\*Either `augment_session_auth` OR both `augment_api_token` and `augment_api_url` must be provided for authentication.
+
+\*\*\*For non-Auggie providers, `llm_api_key` is required.
 
 ### Template System
 
 For advanced use cases, the Auggie Agent supports a template system that automatically extracts context from GitHub pull requests and allows you to create dynamic, reusable instruction templates. Templates are ideal when you need instructions that adapt based on PR content, file changes, or custom data.
 
 See [TEMPLATE.md](./TEMPLATE.md) for complete documentation on creating and using templates.
+
+## LLM Providers
+
+The Augment Agent supports multiple LLM providers, giving you flexibility to choose the best AI model for your needs:
+
+### Supported Providers
+
+- **Auggie** (default) - Uses Auggie service with session authentication
+- **OpenAI** - GPT-4, GPT-3.5, and other OpenAI models
+- **Claude** - Claude-3, Claude-2, and other Anthropic models  
+- **Google** - Gemini Pro, Gemini Flash, and other Google models
+
+### Quick Start with Different Providers
+
+**OpenAI:**
+```yaml
+- name: OpenAI Code Review
+  uses: augmentcode/augment-agent@v0
+  with:
+    llm_provider: "openai"
+    llm_api_key: ${{ secrets.OPENAI_API_KEY }}
+    model: "gpt-4"
+    instruction: "Review this code for security issues"
+```
+
+**Claude:**
+```yaml
+- name: Claude Code Review
+  uses: augmentcode/augment-agent@v0
+  with:
+    llm_provider: "claude"
+    llm_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+    model: "claude-3-sonnet-20240229"
+    instruction: "Review this code for security issues"
+```
+
+**Google:**
+```yaml
+- name: Google Gemini Code Review
+  uses: augmentcode/augment-agent@v0
+  with:
+    llm_provider: "google"
+    llm_api_key: ${{ secrets.GOOGLE_API_KEY }}
+    model: "gemini-pro"
+    instruction: "Review this code for security issues"
+```
+
+### Example Workflows
+
+The [`example-workflows/`](./example-workflows/) directory includes LLM provider specific examples:
+
+- **OpenAI Code Review** - Review code using OpenAI GPT-4
+- **Claude Code Review** - Review code using Claude Sonnet
+- **Google Code Review** - Review code using Google Gemini
+- **Multi-LLM Comparison** - Compare responses from multiple providers
+
+### Provider Configuration
+
+Each provider supports advanced configuration:
+
+```yaml
+- name: Advanced LLM Configuration
+  uses: augmentcode/augment-agent@v0
+  with:
+    llm_provider: "openai"
+    llm_api_key: ${{ secrets.OPENAI_API_KEY }}
+    llm_base_url: "https://api.openai.com/v1"  # Optional custom endpoint
+    model: "gpt-4"
+    llm_temperature: "0.3"      # 0.0 to 2.0
+    llm_max_tokens: "4000"      # Maximum response length
+    llm_timeout: "30000"        # Timeout in milliseconds
+    instruction: "Analyze this code"
+```
+
+See [LLM_PROVIDERS.md](./LLM_PROVIDERS.md) for complete documentation on all LLM providers, including setup instructions, model options, and best practices.

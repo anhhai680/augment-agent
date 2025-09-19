@@ -36,6 +36,14 @@ export interface ActionInputs {
   azureDevOpsPullRequestId?: number | undefined;
   azureDevOpsWorkItemId?: number | undefined;
   azureDevOpsBuildId?: number | undefined;
+
+  // LLM Provider configuration
+  llmProvider?: 'auggie' | 'openai' | 'claude' | 'google' | undefined;
+  llmApiKey?: string | undefined;
+  llmBaseUrl?: string | undefined;
+  llmTemperature?: number | undefined;
+  llmMaxTokens?: number | undefined;
+  llmTimeout?: number | undefined;
 }
 
 export interface RepoInfo {
