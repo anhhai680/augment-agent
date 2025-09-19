@@ -62,6 +62,66 @@ For complete workflow examples, see the [`example-workflows/`](./example-workflo
 
 Each example includes a complete workflow file that you can copy to your `.github/workflows/` directory and customize for your needs.
 
+## Azure DevOps Integration
+
+The Augment Agent now supports Azure DevOps in addition to GitHub! You can use the agent to analyze Azure DevOps pull requests, work items, and build information.
+
+### Azure DevOps Setup
+
+1. **Create Azure DevOps Personal Access Token (PAT)**:
+   - Go to Azure DevOps → User Settings → Personal Access Tokens
+   - Create a new token with the following scopes:
+     - `Code (read)` - for pull request access
+     - `Work Items (read)` - for work item access
+     - `Build (read)` - for build information access
+
+2. **Configure GitHub Secrets**:
+   - Add your Azure DevOps PAT as `AZURE_DEVOPS_TOKEN`
+   - Add your organization name as `AZURE_DEVOPS_ORGANIZATION`
+   - Add your project name as `AZURE_DEVOPS_PROJECT`
+   - Add your repository name as `AZURE_DEVOPS_REPOSITORY`
+
+### Azure DevOps Example Workflows
+
+The [`example-workflows/`](./example-workflows/) directory includes Azure DevOps specific examples:
+
+- **Azure DevOps PR Review** - Review Azure DevOps pull requests
+- **Azure DevOps Template-Based Review** - Use templates with Azure DevOps context
+- **Azure DevOps Work Item Analysis** - Analyze work items and requirements
+
+### Azure DevOps Template Context
+
+When using `platform: "azure-devops"`, templates have access to Azure DevOps specific context:
+
+```nunjucks
+{# Azure DevOps PR context #}
+{{ pr.pullRequestId }}           {# PR ID #}
+{{ pr.title }}                   {# PR title #}
+{{ pr.description }}             {# PR description #}
+{{ pr.author }}                  {# PR author #}
+{{ pr.sourceRef.ref }}           {# Source branch #}
+{{ pr.targetRef.ref }}           {# Target branch #}
+{{ pr.sourceRef.repo.organization }}  {# Organization #}
+{{ pr.sourceRef.repo.project }}      {# Project #}
+{{ pr.sourceRef.repo.repository }}   {# Repository #}
+
+{# Work Item context #}
+{{ workItem.id }}                {# Work Item ID #}
+{{ workItem.title }}             {# Work Item title #}
+{{ workItem.workItemType }}      {# Work Item type #}
+{{ workItem.state }}             {# Work Item state #}
+{{ workItem.assignedTo }}        {# Assigned to #}
+{{ workItem.priority }}          {# Priority #}
+{{ workItem.severity }}          {# Severity #}
+
+{# Build context #}
+{{ build.id }}                   {# Build ID #}
+{{ build.buildNumber }}          {# Build number #}
+{{ build.status }}               {# Build status #}
+{{ build.result }}               {# Build result #}
+{{ build.sourceBranch }}         {# Source branch #}
+```
+
 ## Advanced
 
 ### Inputs
@@ -80,6 +140,14 @@ Each example includes a complete workflow file that you can copy to your `.githu
 | `repo_name`            | Repository name for template context                  | No       | `${{ github.repository }}`                  |
 | `custom_context`       | Additional JSON context for templates                 | No       | `'{"priority": "high"}'`                    |
 | `model`                | Model to use; passed through to auggie as --model     | No       | e.g. `sonnet4`, from `auggie --list-models` |
+| `platform`            | Platform for context extraction (github or azure-devops) | No | `"azure-devops"` |
+| `azure_devops_token`   | Azure DevOps Personal Access Token (store as secret)  | No       | `${{ secrets.AZURE_DEVOPS_TOKEN }}`         |
+| `azure_devops_organization` | Azure DevOps organization name                    | No       | `"my-organization"`                         |
+| `azure_devops_project` | Azure DevOps project name                            | No       | `"my-project"`                              |
+| `azure_devops_repository` | Azure DevOps repository name                      | No       | `"my-repository"`                           |
+| `azure_devops_pull_request_id` | Azure DevOps pull request ID for context extraction | No | `123` |
+| `azure_devops_work_item_id` | Azure DevOps work item ID for context extraction   | No | `456` |
+| `azure_devops_build_id` | Azure DevOps build ID for context extraction        | No | `789` |
 
 \*Either `instruction`, `instruction_file`, or `template_directory` must be provided.
 

@@ -25,6 +25,27 @@ export const INPUT_FIELD_MAP: Record<string, InputField> = {
   templateDirectory: { envVar: 'INPUT_TEMPLATE_DIRECTORY', required: false },
   templateName: { envVar: 'INPUT_TEMPLATE_NAME', required: false },
   model: { envVar: 'INPUT_MODEL', required: false },
+  // Azure DevOps specific inputs
+  azureDevOpsToken: { envVar: 'INPUT_AZURE_DEVOPS_TOKEN', required: false },
+  azureDevOpsOrganization: { envVar: 'INPUT_AZURE_DEVOPS_ORGANIZATION', required: false },
+  azureDevOpsProject: { envVar: 'INPUT_AZURE_DEVOPS_PROJECT', required: false },
+  azureDevOpsRepository: { envVar: 'INPUT_AZURE_DEVOPS_REPOSITORY', required: false },
+  azureDevOpsPullRequestId: {
+    envVar: 'INPUT_AZURE_DEVOPS_PULL_REQUEST_ID',
+    required: false,
+    transform: (val: string) => parseInt(val, 10),
+  },
+  azureDevOpsWorkItemId: {
+    envVar: 'INPUT_AZURE_DEVOPS_WORK_ITEM_ID',
+    required: false,
+    transform: (val: string) => parseInt(val, 10),
+  },
+  azureDevOpsBuildId: {
+    envVar: 'INPUT_AZURE_DEVOPS_BUILD_ID',
+    required: false,
+    transform: (val: string) => parseInt(val, 10),
+  },
+  platform: { envVar: 'INPUT_PLATFORM', required: false },
 };
 
 export const TEMPLATE_CONFIG = {
@@ -42,6 +63,11 @@ export const PATHS = {
 export const ERROR = {
   GITHUB: {
     API_ERROR: 'GitHub API request failed',
+  },
+  AZURE_DEVOPS: {
+    API_ERROR: 'Azure DevOps API request failed',
+    MISSING_CONFIG: 'Azure DevOps configuration is incomplete',
+    INVALID_PLATFORM: 'Invalid platform specified',
   },
   INPUT: {
     CONFLICTING_INSTRUCTION_INPUTS: 'Cannot specify both instruction and instruction_file',

@@ -43,6 +43,31 @@ inputs:
   model:
     description: "Model to use; forwarded to auggie as --model"
     required: false
+  platform:
+    description: "Platform to use for context extraction (github or azure-devops)"
+    required: false
+    default: "github"
+  azure_devops_token:
+    description: "Azure DevOps Personal Access Token (PAT). Store as repository secret for security."
+    required: false
+  azure_devops_organization:
+    description: "Azure DevOps organization name"
+    required: false
+  azure_devops_project:
+    description: "Azure DevOps project name"
+    required: false
+  azure_devops_repository:
+    description: "Azure DevOps repository name"
+    required: false
+  azure_devops_pull_request_id:
+    description: "Azure DevOps pull request ID for context extraction"
+    required: false
+  azure_devops_work_item_id:
+    description: "Azure DevOps work item ID for context extraction"
+    required: false
+  azure_devops_build_id:
+    description: "Azure DevOps build ID for context extraction"
+    required: false
 
 runs:
   using: "composite"
@@ -74,3 +99,11 @@ runs:
         INPUT_REPO_NAME: ${{ inputs.repo_name }}
         INPUT_CUSTOM_CONTEXT: ${{ inputs.custom_context }}
         INPUT_MODEL: ${{ inputs.model }}
+        INPUT_PLATFORM: ${{ inputs.platform }}
+        INPUT_AZURE_DEVOPS_TOKEN: ${{ inputs.azure_devops_token }}
+        INPUT_AZURE_DEVOPS_ORGANIZATION: ${{ inputs.azure_devops_organization }}
+        INPUT_AZURE_DEVOPS_PROJECT: ${{ inputs.azure_devops_project }}
+        INPUT_AZURE_DEVOPS_REPOSITORY: ${{ inputs.azure_devops_repository }}
+        INPUT_AZURE_DEVOPS_PULL_REQUEST_ID: ${{ inputs.azure_devops_pull_request_id }}
+        INPUT_AZURE_DEVOPS_WORK_ITEM_ID: ${{ inputs.azure_devops_work_item_id }}
+        INPUT_AZURE_DEVOPS_BUILD_ID: ${{ inputs.azure_devops_build_id }}

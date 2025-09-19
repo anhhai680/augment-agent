@@ -27,9 +27,18 @@ const ActionInputsSchema = z
       .string()
       .regex(/^[^\/]+\/[^\/]+$/, ERROR.INPUT.REPO_FORMAT)
       .optional(),
+    // Platform and Azure DevOps fields
+    platform: z.enum(['github', 'azure-devops']).default('github'),
+    azureDevOpsToken: z.string().optional(),
+    azureDevOpsOrganization: z.string().optional(),
+    azureDevOpsProject: z.string().optional(),
+    azureDevOpsRepository: z.string().optional(),
+    azureDevOpsPullRequestId: z.number().int().positive('Azure DevOps pull request ID must be a positive integer').optional(),
+    azureDevOpsWorkItemId: z.number().int().positive('Azure DevOps work item ID must be a positive integer').optional(),
+    azureDevOpsBuildId: z.number().int().positive('Azure DevOps build ID must be a positive integer').optional(),
   })
   .refine(
-    data => {
+    (data: any) => {
       const hasInstruction = data.instruction || data.instructionFile;
       const hasTemplate = data.templateDirectory;
       return hasInstruction || hasTemplate;
@@ -40,7 +49,7 @@ const ActionInputsSchema = z
     }
   )
   .refine(
-    data => {
+    (data: any) => {
       const hasInstruction = data.instruction || data.instructionFile;
       const hasTemplate = data.templateDirectory;
       return !(hasInstruction && hasTemplate);
@@ -50,12 +59,12 @@ const ActionInputsSchema = z
       path: ['instruction', 'instructionFile', 'templateDirectory'],
     }
   )
-  .refine(data => !(data.instruction && data.instructionFile), {
+  .refine((data: any) => !(data.instruction && data.instructionFile), {
     message: ERROR.INPUT.CONFLICTING_INSTRUCTION_INPUTS,
     path: ['instruction', 'instructionFile'],
   })
   .refine(
-    data => {
+    (data: any) => {
       const hasPullNumber = data.pullNumber !== undefined;
       const hasRepoName = data.repoName !== undefined;
       return hasPullNumber === hasRepoName;
@@ -66,7 +75,7 @@ const ActionInputsSchema = z
     }
   )
   .refine(
-    data => {
+    (data: any) => {
       if (!data.customContext) return true;
       try {
         JSON.parse(data.customContext);
@@ -81,7 +90,7 @@ const ActionInputsSchema = z
     }
   )
   .refine(
-    data => {
+    (data: any) => {
       const hasSessionAuth = data.augmentSessionAuth;
       const hasTokenAuth = data.augmentApiToken && data.augmentApiUrl;
       return hasSessionAuth || hasTokenAuth;
@@ -93,7 +102,7 @@ const ActionInputsSchema = z
     }
   )
   .refine(
-    data => {
+    (data: any) => {
       const hasSessionAuth = data.augmentSessionAuth;
       const hasTokenAuth = data.augmentApiToken || data.augmentApiUrl;
       return !(hasSessionAuth && hasTokenAuth);
@@ -105,7 +114,7 @@ const ActionInputsSchema = z
     }
   )
   .refine(
-    data => {
+    (data: any) => {
       if (!data.augmentSessionAuth) return true;
       try {
         JSON.parse(data.augmentSessionAuth);
@@ -120,11 +129,12 @@ const ActionInputsSchema = z
     }
   )
   .refine(
-    data => {
+    (data: any) => {
       if (!data.augmentApiUrl) return true;
       try {
-        new URL(data.augmentApiUrl);
-        return true;
+        // Simple URL validation without using URL constructor
+        const urlPattern = /^https?:\/\/.+/;
+        return urlPattern.test(data.augmentApiUrl);
       } catch {
         return false;
       }
@@ -132,6 +142,39 @@ const ActionInputsSchema = z
     {
       message: 'Augment API URL must be a valid URL',
       path: ['augmentApiUrl'],
+    }
+  )
+  .refine(
+    (data: any) => {
+      // If platform is azure-devops, validate Azure DevOps configuration
+      if (data.platform === 'azure-devops') {
+        const hasAzureDevOpsConfig = data.azureDevOpsToken && 
+                                   data.azureDevOpsOrganization && 
+                                   data.azureDevOpsProject && 
+                                   data.azureDevOpsRepository;
+        return hasAzureDevOpsConfig;
+      }
+      return true;
+    },
+    {
+      message: 'Azure DevOps platform requires azure_devops_token, azure_devops_organization, azure_devops_project, and azure_devops_repository',
+      path: ['platform'],
+    }
+  )
+  .refine(
+    (data: any) => {
+      // If platform is azure-devops, ensure at least one Azure DevOps context ID is provided
+      if (data.platform === 'azure-devops') {
+        const hasAzureDevOpsContext = data.azureDevOpsPullRequestId || 
+                                    data.azureDevOpsWorkItemId || 
+                                    data.azureDevOpsBuildId;
+        return hasAzureDevOpsContext;
+      }
+      return true;
+    },
+    {
+      message: 'Azure DevOps platform requires at least one context ID (azure_devops_pull_request_id, azure_devops_work_item_id, or azure_devops_build_id)',
+      path: ['platform'],
     }
   );
 
@@ -170,9 +213,9 @@ export class ValidationUtils {
       const validated = ActionInputsSchema.parse(inputs) as ActionInputs;
       logger.debug('Action inputs validated successfully');
       return validated;
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof z.ZodError) {
-        const errorMessages = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+        const errorMessages = error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`);
         const message = `${ERROR.INPUT.INVALID}: ${errorMessages.join(', ')}`;
         logger.error(message, error);
         throw new Error(message);
