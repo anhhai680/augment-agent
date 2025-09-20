@@ -55,7 +55,8 @@ jobs:
         uses: augmentcode/augment-agent@v0
         with:
           llm_provider: ${{ matrix.llm_config.provider }}
-          llm_api_key: ${{ secrets[matrix.llm_config.secret] }}
+          augment_session_auth: ${{ matrix.llm_config.provider == 'auggie' && secrets[matrix.llm_config.secret] || '' }}
+          llm_api_key: ${{ matrix.llm_config.provider != 'auggie' && secrets[matrix.llm_config.secret] || '' }}
           model: ${{ matrix.llm_config.model }}
           llm_temperature: "0.3"
           llm_max_tokens: "4000"
