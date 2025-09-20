@@ -5,53 +5,12 @@
  * Main entry point for the action
  */
 
-import { spawn, SpawnOptions } from 'child_process';
 import process from 'process';
 import { ValidationUtils } from './utils/validation.js';
 import { TemplateProcessor } from './template/template-processor.js';
 import { LLMFactory } from './services/llm/llm-factory.js';
 import { logger } from './utils/logger.js';
 import { ActionInputs } from './types/inputs.js';
-
-/**
- * Execute a shell command and return a promise
- */
-function execCommand(
-  command: string,
-  args: string[] = [],
-  options: SpawnOptions = {}
-): Promise<number> {
-  return new Promise((resolve, reject) => {
-    // Join command and args into a single shell command for proper quoting
-    const fullCommand = `${command} ${args
-      .map(arg => {
-        // Properly quote arguments that contain spaces or special characters
-        if (arg.includes(' ') || arg.includes('"') || arg.includes("'")) {
-          return `"${arg.replace(/"/g, '\\"')}"`;
-        }
-        return arg;
-      })
-      .join(' ')}`;
-
-    const child = spawn(fullCommand, [], {
-      stdio: 'inherit',
-      shell: true,
-      ...options,
-    });
-
-    child.on('close', code => {
-      if (code === 0) {
-        resolve(code);
-      } else {
-        reject(new Error(`Command failed with exit code ${code}`));
-      }
-    });
-
-    child.on('error', error => {
-      reject(error);
-    });
-  });
-}
 
 /**
  * Set up environment variables for the augment script
@@ -120,46 +79,22 @@ async function runLLM(inputs: ActionInputs): Promise<void> {
   const providerType = inputs.llmProvider || 'auggie';
   logger.info(`🤖 Using LLM provider: ${providerType}`);
 
-  if (providerType === 'auggie') {
-    // Use existing Auggie CLI approach for backward compatibility
-    await runAuggieScript(inputs, instruction_value, is_file);
-  } else {
-    // Use new LLM provider system
-    await runCustomLLM(inputs, instruction_value, is_file);
-  }
+  // Use unified LLM provider system for all providers
+  await runUnifiedLLM(inputs, instruction_value, is_file);
 }
 
 /**
- * Run Auggie script with appropriate arguments (backward compatibility)
+ * Run LLM with unified provider system
  */
-async function runAuggieScript(inputs: ActionInputs, instruction_value: string, is_file: boolean): Promise<void> {
-  const args = ['--print'];
-  if (inputs.model && inputs.model.trim().length > 0) {
-    args.push('--model', inputs.model.trim());
-  }
-  if (is_file) {
-    logger.info(`📄 Using instruction file: ${instruction_value}`);
-    args.push('--instruction-file');
-  } else {
-    logger.info('📝 Using direct instruction');
-    args.push('--instruction');
-  }
-  args.push(instruction_value);
-  await execCommand('auggie', args);
-  logger.info('✅ Augment Agent completed successfully');
-}
-
-/**
- * Run custom LLM provider
- */
-async function runCustomLLM(inputs: ActionInputs, instruction_value: string, is_file: boolean): Promise<void> {
+async function runUnifiedLLM(inputs: ActionInputs, instruction_value: string, is_file: boolean): Promise<void> {
   try {
-    // Validate required fields for custom LLM providers
+    // Validate required fields for LLM providers
     if (!inputs.llmProvider) {
-      throw new Error('LLM provider is required for custom LLM execution');
+      throw new Error('LLM provider is required for LLM execution');
     }
     
-    if (!inputs.llmApiKey || inputs.llmApiKey.trim().length === 0) {
+    // Only validate API key for non-Auggie providers
+    if (inputs.llmProvider !== 'auggie' && (!inputs.llmApiKey || inputs.llmApiKey.trim().length === 0)) {
       throw new Error(`API key is required for ${inputs.llmProvider} provider`);
     }
 
@@ -210,7 +145,7 @@ async function runCustomLLM(inputs: ActionInputs, instruction_value: string, is_
     
     logger.info('✅ Augment Agent completed successfully');
   } catch (error) {
-    logger.error('Custom LLM provider failed', error);
+    logger.error('LLM provider failed', error);
     throw error;
   }
 }
