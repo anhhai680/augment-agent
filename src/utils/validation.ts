@@ -139,16 +139,58 @@ const ActionInputsSchema = z
     (data: any) => {
       if (!data.augmentApiUrl) return true;
       try {
-        // Simple URL validation without using URL constructor
-        const urlPattern = /^https?:\/\/.+/;
-        return urlPattern.test(data.augmentApiUrl);
+        // More robust URL validation pattern that handles paths, query params, etc.
+        const urlPattern = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[-a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&=\/]*)$/;
+        const url = data.augmentApiUrl.trim();
+        
+        // Check basic pattern and ensure it has a proper domain structure
+        if (!urlPattern.test(url)) return false;
+        
+        // Additional validation: ensure there's a domain with TLD after the protocol
+        const urlParts = url.split('://');
+        if (urlParts.length !== 2) return false;
+        
+        const domainPart = urlParts[1].split('/')[0].split('?')[0]; // Extract domain part
+        const domainParts = domainPart.split('.');
+        
+        // Must have at least one dot in domain (e.g., example.com)
+        return domainParts.length >= 2 && domainParts.every((part: string) => part.length > 0);
       } catch {
         return false;
       }
     },
     {
-      message: 'Augment API URL must be a valid URL',
+      message: 'Augment API URL must be a valid HTTP(S) URL with a proper domain',
       path: ['augmentApiUrl'],
+    }
+  )
+  .refine(
+    (data: any) => {
+      if (!data.llmBaseUrl) return true;
+      try {
+        // More robust URL validation pattern that handles paths, query params, etc.
+        const urlPattern = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[-a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&=\/]*)$/;
+        const url = data.llmBaseUrl.trim();
+        
+        // Check basic pattern and ensure it has a proper domain structure
+        if (!urlPattern.test(url)) return false;
+        
+        // Additional validation: ensure there's a domain with TLD after the protocol
+        const urlParts = url.split('://');
+        if (urlParts.length !== 2) return false;
+        
+        const domainPart = urlParts[1].split('/')[0].split('?')[0]; // Extract domain part
+        const domainParts = domainPart.split('.');
+        
+        // Must have at least one dot in domain (e.g., example.com)
+        return domainParts.length >= 2 && domainParts.every((part: string) => part.length > 0);
+      } catch {
+        return false;
+      }
+    },
+    {
+      message: 'LLM Base URL must be a valid HTTP(S) URL with a proper domain',
+      path: ['llmBaseUrl'],
     }
   )
   .refine(
