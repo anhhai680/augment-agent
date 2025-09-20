@@ -22,11 +22,18 @@ Create a PAT with the following scopes:
 
 ### 2. GitHub Repository Configuration
 
-Add the following secrets to your GitHub repository:
+Configure the following secrets and variables in your GitHub repository:
+
+**Secrets** (sensitive data):
 
 | Secret Name | Description | Example |
 |-------------|-------------|---------|
 | `AZURE_DEVOPS_TOKEN` | Your Azure DevOps PAT | `abc123...` |
+
+**Repository Variables** (non-sensitive configuration):
+
+| Variable Name | Description | Example |
+|---------------|-------------|---------|
 | `AZURE_DEVOPS_ORGANIZATION` | Azure DevOps organization name | `my-org` |
 | `AZURE_DEVOPS_PROJECT` | Azure DevOps project name | `my-project` |
 | `AZURE_DEVOPS_REPOSITORY` | Azure DevOps repository name | `my-repo` |
