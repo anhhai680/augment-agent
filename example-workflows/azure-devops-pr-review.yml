@@ -1,7 +1,11 @@
 name: Augment Agent - Azure DevOps PR Review
 on:
-  pull_request:
-    types: [opened]
+  workflow_dispatch:
+    inputs:
+      azure_devops_pull_request_id:
+        description: 'Azure DevOps Pull Request ID'
+        required: true
+        type: string
 
 jobs:
   azure-devops-pr-review:
@@ -13,7 +17,7 @@ jobs:
 
       - name: Create instruction file
         env:
-          AZURE_DEVOPS_PULL_REQUEST_ID: ${{ github.event.pull_request.number }}
+          AZURE_DEVOPS_PULL_REQUEST_ID: ${{ inputs.azure_devops_pull_request_id }}
           AZURE_DEVOPS_ORGANIZATION: ${{ vars.AZURE_DEVOPS_ORGANIZATION }}
           AZURE_DEVOPS_PROJECT: ${{ vars.AZURE_DEVOPS_PROJECT }}
           AZURE_DEVOPS_REPOSITORY: ${{ vars.AZURE_DEVOPS_REPOSITORY }}
@@ -52,5 +56,5 @@ jobs:
           azure_devops_organization: ${{ vars.AZURE_DEVOPS_ORGANIZATION }}
           azure_devops_project: ${{ vars.AZURE_DEVOPS_PROJECT }}
           azure_devops_repository: ${{ vars.AZURE_DEVOPS_REPOSITORY }}
-          azure_devops_pull_request_id: ${{ github.event.pull_request.number }}
+          azure_devops_pull_request_id: ${{ inputs.azure_devops_pull_request_id }}
           instruction_file: /tmp/azure-devops-review-instruction.txt
