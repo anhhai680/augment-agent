@@ -56,25 +56,15 @@ export class ClaudeProvider implements LLMProvider {
   }
 
   async getAvailableModels(): Promise<string[]> {
-    try {
-      const response = await this.makeRequest('/messages', 'GET');
-      // Anthropic doesn't have a models endpoint, return known models
-      return [
-        'claude-3-opus-20240229',
-        'claude-3-sonnet-20240229',
-        'claude-3-haiku-20240307',
-        'claude-2.1',
-        'claude-2.0',
-        'claude-instant-1.2'
-      ];
-    } catch (error) {
-      logger.warn('Failed to get available models from Claude', error);
-      return [
-        'claude-3-sonnet-20240229',
-        'claude-3-haiku-20240307',
-        'claude-2.1'
-      ];
-    }
+    // Anthropic doesn't provide a model-listing endpoint, return known models
+    return [
+      'claude-3-opus-20240229',
+      'claude-3-sonnet-20240229',
+      'claude-3-haiku-20240307',
+      'claude-2.1',
+      'claude-2.0',
+      'claude-instant-1.2'
+    ];
   }
 
   validateConfig(): boolean {
