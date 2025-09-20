@@ -1,7 +1,11 @@
 name: Augment Agent - Azure DevOps Template-Based Review
 on:
-  pull_request:
-    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      azure_devops_pull_request_id:
+        description: 'Azure DevOps Pull Request ID'
+        required: true
+        type: string
 
 jobs:
   azure-devops-template-review:
@@ -92,7 +96,7 @@ jobs:
           azure_devops_organization: ${{ vars.AZURE_DEVOPS_ORGANIZATION }}
           azure_devops_project: ${{ vars.AZURE_DEVOPS_PROJECT }}
           azure_devops_repository: ${{ vars.AZURE_DEVOPS_REPOSITORY }}
-          azure_devops_pull_request_id: ${{ github.event.pull_request.number }}
+          azure_devops_pull_request_id: ${{ inputs.azure_devops_pull_request_id }}
           template_directory: ".github/templates"
           template_name: "azure-devops-pr-review.njk"
           custom_context: |

@@ -145,7 +145,7 @@ When using `platform: "azure-devops"`, templates have access to Azure DevOps spe
 | `azure_devops_organization` | Azure DevOps organization name                    | No       | `"my-organization"`                         |
 | `azure_devops_project` | Azure DevOps project name                            | No       | `"my-project"`                              |
 | `azure_devops_repository` | Azure DevOps repository name                      | No       | `"my-repository"`                           |
-| `azure_devops_pull_request_id` | Azure DevOps pull request ID for context extraction | No | `123` |
+| `azure_devops_pull_request_id` | Azure DevOps pull request ID (not GitHub PR number) | No | `123` |
 | `azure_devops_work_item_id` | Azure DevOps work item ID for context extraction   | No | `456` |
 | `azure_devops_build_id` | Azure DevOps build ID for context extraction        | No | `789` |
 | `llm_provider` | LLM provider to use (auggie, openai, claude, google) | No | `"auggie"` |
