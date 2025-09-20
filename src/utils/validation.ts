@@ -1,5 +1,14 @@
 /**
  * Input validation utilities
+ * 
+ * Security Note: API key format validation is intentionally minimal. We only validate
+ * presence, not specific formats (prefixes, lengths, etc.) to avoid:
+ * - False positives from legitimate keys that don't match expected patterns
+ * - Security vulnerabilities from client-side format assumptions
+ * - Maintenance overhead as providers change their key formats
+ * 
+ * Each LLM provider handles their own key format validation during API calls,
+ * which is more secure and reliable than client-side checks.
  */
 
 import { z } from 'zod';
@@ -229,6 +238,8 @@ const ActionInputsSchema = z
   .refine(
     (data: any) => {
       // If LLM provider is not auggie, validate API key is provided
+      // We only validate presence, not format - let the provider handle format validation
+      // to avoid false positives and security issues with client-side format checks
       if (data.llmProvider !== 'auggie') {
         return !!(data.llmApiKey && data.llmApiKey.trim().length > 0);
       }
@@ -237,25 +248,6 @@ const ActionInputsSchema = z
     {
       message: 'LLM provider requires API key when not using auggie',
       path: ['llmProvider'],
-    }
-  )
-  .refine(
-    (data: any) => {
-      // Validate API key format based on provider
-      if (data.llmProvider === 'openai' && data.llmApiKey) {
-        return data.llmApiKey.startsWith('sk-');
-      }
-      if (data.llmProvider === 'claude' && data.llmApiKey) {
-        return data.llmApiKey.startsWith('sk-ant-');
-      }
-      if (data.llmProvider === 'google' && data.llmApiKey) {
-        return data.llmApiKey.length > 20; // Google API keys are typically longer
-      }
-      return true;
-    },
-    {
-      message: 'Invalid API key format for the selected LLM provider',
-      path: ['llmApiKey'],
     }
   );
 
