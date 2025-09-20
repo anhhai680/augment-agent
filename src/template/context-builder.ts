@@ -33,7 +33,7 @@ export class ContextBuilder {
         azureDevOpsExtractor = new AzureDevOpsContextExtractor(inputs);
         logger.info('Azure DevOps context extractor created successfully');
       } catch (error) {
-        logger.warn('Failed to create Azure DevOps extractor, falling back to GitHub', error);
+        logger.error('Failed to create Azure DevOps extractor, falling back to GitHub', error);
       }
     }
 
