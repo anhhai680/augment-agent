@@ -6,7 +6,7 @@ import { logger } from '../utils/logger.js';
 import { PRExtractor } from './extractors/pr-extractor.js';
 import { CustomContextExtractor } from './extractors/custom-context-extractor.js';
 import { AzureDevOpsContextExtractor } from './extractors/azure-devops-context-extractor.js';
-import type { TemplateContext } from '../types/context.js';
+import type { TemplateContext, AnyTemplateContext } from '../types/context.js';
 import type { AzureDevOpsTemplateContext } from '../types/azure-devops-context.js';
 import type { ActionInputs } from '../types/inputs.js';
 
@@ -40,7 +40,7 @@ export class ContextBuilder {
     return new ContextBuilder(prExtractor, customContextExtractor, azureDevOpsExtractor);
   }
 
-  async buildContext(inputs: ActionInputs): Promise<TemplateContext | AzureDevOpsTemplateContext> {
+  async buildContext(inputs: ActionInputs): Promise<AnyTemplateContext> {
     try {
       logger.debug('Building template context from inputs', {
         platform: inputs.platform || 'github',
@@ -63,7 +63,9 @@ export class ContextBuilder {
   }
 
   private async buildGitHubContext(inputs: ActionInputs): Promise<TemplateContext> {
-    const context: TemplateContext = {};
+    const context: TemplateContext = {
+      platform: 'github',
+    };
 
     // Extract PR data (extractor decides if it should run)
     const prData = await this.prExtractor.extract(inputs);
@@ -103,7 +105,7 @@ export class ContextBuilder {
     };
 
     // Extract PR data
-    const prData = await this.azureDevOpsExtractor.extractPRData();
+    const prData = await this.azureDevOpsExtractor.extractPRData(inputs);
     if (prData) {
       context.pr = prData;
       logger.debug('Azure DevOps PR data extracted and added to context', {
@@ -113,7 +115,7 @@ export class ContextBuilder {
     }
 
     // Extract work item data
-    const workItemData = await this.azureDevOpsExtractor.extractWorkItemData();
+    const workItemData = await this.azureDevOpsExtractor.extractWorkItemData(inputs);
     if (workItemData) {
       context.workItem = workItemData;
       logger.debug('Azure DevOps work item data extracted and added to context', {
@@ -123,7 +125,7 @@ export class ContextBuilder {
     }
 
     // Extract build data
-    const buildData = await this.azureDevOpsExtractor.extractBuildData();
+    const buildData = await this.azureDevOpsExtractor.extractBuildData(inputs);
     if (buildData) {
       context.build = buildData;
       logger.debug('Azure DevOps build data extracted and added to context', {
