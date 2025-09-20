@@ -27,7 +27,12 @@ export class TemplateProcessor {
       });
 
       const context = await this.contextBuilder.buildContext(inputs);
-      const content = await this.templateEngine.renderTemplate(inputs.templateName!, context);
+      
+      if (!inputs.templateName) {
+        throw new Error('Template name is required');
+      }
+      
+      const content = await this.templateEngine.renderTemplate(inputs.templateName, context);
       const instructionFilePath = await this.writeInstructionFile(content);
 
       logger.info('Template processing pipeline completed', {

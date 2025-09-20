@@ -154,15 +154,30 @@ async function runAuggieScript(inputs: ActionInputs, instruction_value: string, 
  */
 async function runCustomLLM(inputs: ActionInputs, instruction_value: string, is_file: boolean): Promise<void> {
   try {
+    // Validate required fields for custom LLM providers
+    if (!inputs.llmProvider) {
+      throw new Error('LLM provider is required for custom LLM execution');
+    }
+    
+    if (!inputs.llmApiKey || inputs.llmApiKey.trim().length === 0) {
+      throw new Error(`API key is required for ${inputs.llmProvider} provider`);
+    }
+
     // Create LLM provider
-    const llmProvider = LLMFactory.createProvider(inputs.llmProvider!, {
-      apiKey: inputs.llmApiKey!,
-      baseUrl: inputs.llmBaseUrl,
+    const config: any = {
+      apiKey: inputs.llmApiKey,
       model: inputs.model || undefined,
       temperature: inputs.llmTemperature,
       maxTokens: inputs.llmMaxTokens,
       timeout: inputs.llmTimeout
-    });
+    };
+    
+    // Only add baseUrl if it's defined
+    if (inputs.llmBaseUrl) {
+      config.baseUrl = inputs.llmBaseUrl;
+    }
+    
+    const llmProvider = LLMFactory.createProvider(inputs.llmProvider, config);
 
     // Validate configuration
     if (!llmProvider.validateConfig()) {

@@ -11,39 +11,60 @@ import { PATHS, TEMPLATE_CONFIG } from '../../config/constants.js';
 import { BaseExtractor } from './base-extractor.js';
 import type { ActionInputs } from '../../types/inputs.js';
 
-export class AzureDevOpsContextExtractor extends BaseExtractor {
+export class AzureDevOpsContextExtractor extends BaseExtractor<any> {
   private azureDevOpsService: AzureDevOpsService;
+  private readonly organization: string;
+  private readonly project: string;
+  private readonly repository: string;
 
   constructor(inputs: ActionInputs) {
-    super(inputs);
+    super('Azure DevOps Context');
     
     if (!inputs.azureDevOpsToken || !inputs.azureDevOpsOrganization || !inputs.azureDevOpsProject || !inputs.azureDevOpsRepository) {
       throw new Error('Azure DevOps configuration is incomplete. Required: token, organization, project, repository');
     }
 
+    this.organization = inputs.azureDevOpsOrganization;
+    this.project = inputs.azureDevOpsProject;
+    this.repository = inputs.azureDevOpsRepository;
+
     this.azureDevOpsService = new AzureDevOpsService({
       token: inputs.azureDevOpsToken,
-      organization: inputs.azureDevOpsOrganization,
-      project: inputs.azureDevOpsProject,
-      repository: inputs.azureDevOpsRepository,
+      organization: this.organization,
+      project: this.project,
+      repository: this.repository,
     });
   }
 
-  async extractPRData(): Promise<AzureDevOpsPRData | null> {
-    if (!this.inputs.azureDevOpsPullRequestId) {
+  shouldExtract(inputs: ActionInputs): boolean {
+    return inputs.platform === 'azure-devops' && !!(
+      inputs.azureDevOpsPullRequestId || 
+      inputs.azureDevOpsWorkItemId || 
+      inputs.azureDevOpsBuildId
+    );
+  }
+
+  protected async performExtraction(inputs: ActionInputs): Promise<any> {
+    // This method would contain the actual extraction logic
+    // For now, return the inputs to satisfy the interface
+    return inputs;
+  }
+
+  async extractPRData(inputs: ActionInputs): Promise<AzureDevOpsPRData | null> {
+    if (!inputs.azureDevOpsPullRequestId) {
       logger.debug('No Azure DevOps pull request ID provided');
       return null;
     }
 
     try {
       logger.info('Extracting Azure DevOps PR data', {
-        pullRequestId: this.inputs.azureDevOpsPullRequestId,
+        pullRequestId: inputs.azureDevOpsPullRequestId,
       });
 
       const [pr, files, diff] = await Promise.all([
-        this.azureDevOpsService.getPullRequest(this.inputs.azureDevOpsPullRequestId),
-        this.azureDevOpsService.getPullRequestFiles(this.inputs.azureDevOpsPullRequestId),
-        this.azureDevOpsService.getPullRequestDiff(this.inputs.azureDevOpsPullRequestId),
+        this.azureDevOpsService.getPullRequest(inputs.azureDevOpsPullRequestId),
+        this.azureDevOpsService.getPullRequestFiles(inputs.azureDevOpsPullRequestId),
+        this.azureDevOpsService.getPullRequestDiff(inputs.azureDevOpsPullRequestId),
       ]);
 
       const changedFiles = files.map(file => file.path).join('\n');
@@ -60,20 +81,20 @@ export class AzureDevOpsContextExtractor extends BaseExtractor {
           ref: pr.sourceRefName,
           commitId: pr.lastMergeSourceCommit.commitId,
           repo: {
-            organization: this.inputs.azureDevOpsOrganization!,
-            project: this.inputs.azureDevOpsProject!,
-            repository: this.inputs.azureDevOpsRepository!,
-            full_name: `${this.inputs.azureDevOpsOrganization}/${this.inputs.azureDevOpsProject}/${this.inputs.azureDevOpsRepository}`,
+            organization: this.organization,
+            project: this.project,
+            repository: this.repository,
+            full_name: `${this.organization}/${this.project}/${this.repository}`,
           },
         },
         targetRef: {
           ref: pr.targetRefName,
           commitId: pr.lastMergeTargetCommit.commitId,
           repo: {
-            organization: this.inputs.azureDevOpsOrganization!,
-            project: this.inputs.azureDevOpsProject!,
-            repository: this.inputs.azureDevOpsRepository!,
-            full_name: `${this.inputs.azureDevOpsOrganization}/${this.inputs.azureDevOpsProject}/${this.inputs.azureDevOpsRepository}`,
+            organization: this.organization,
+            project: this.project,
+            repository: this.repository,
+            full_name: `${this.organization}/${this.project}/${this.repository}`,
           },
         },
         creationDate: pr.creationDate,
@@ -101,18 +122,18 @@ export class AzureDevOpsContextExtractor extends BaseExtractor {
     }
   }
 
-  async extractWorkItemData(): Promise<AzureDevOpsWorkItemData | null> {
-    if (!this.inputs.azureDevOpsWorkItemId) {
+  async extractWorkItemData(inputs: ActionInputs): Promise<AzureDevOpsWorkItemData | null> {
+    if (!inputs.azureDevOpsWorkItemId) {
       logger.debug('No Azure DevOps work item ID provided');
       return null;
     }
 
     try {
       logger.info('Extracting Azure DevOps work item data', {
-        workItemId: this.inputs.azureDevOpsWorkItemId,
+        workItemId: inputs.azureDevOpsWorkItemId,
       });
 
-      const workItem = await this.azureDevOpsService.getWorkItem(this.inputs.azureDevOpsWorkItemId);
+      const workItem = await this.azureDevOpsService.getWorkItem(inputs.azureDevOpsWorkItemId);
 
       const workItemData: AzureDevOpsWorkItemData = {
         id: workItem.id,
@@ -146,18 +167,18 @@ export class AzureDevOpsContextExtractor extends BaseExtractor {
     }
   }
 
-  async extractBuildData(): Promise<AzureDevOpsBuildData | null> {
-    if (!this.inputs.azureDevOpsBuildId) {
+  async extractBuildData(inputs: ActionInputs): Promise<AzureDevOpsBuildData | null> {
+    if (!inputs.azureDevOpsBuildId) {
       logger.debug('No Azure DevOps build ID provided');
       return null;
     }
 
     try {
       logger.info('Extracting Azure DevOps build data', {
-        buildId: this.inputs.azureDevOpsBuildId,
+        buildId: inputs.azureDevOpsBuildId,
       });
 
-      const build = await this.azureDevOpsService.getBuildInfo(this.inputs.azureDevOpsBuildId);
+      const build = await this.azureDevOpsService.getBuildInfo(inputs.azureDevOpsBuildId);
 
       const buildData: AzureDevOpsBuildData = {
         id: build.id,
