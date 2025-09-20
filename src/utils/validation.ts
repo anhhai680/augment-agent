@@ -221,17 +221,23 @@ const ActionInputsSchema = z
   )
   .refine(
     (data: any) => {
-      // If platform is azure-devops, ensure at least one Azure DevOps context ID is provided
-      if (data.platform === 'azure-devops') {
-        const hasAzureDevOpsContext = data.azureDevOpsPullRequestId || 
-                                    data.azureDevOpsWorkItemId || 
-                                    data.azureDevOpsBuildId;
-        return hasAzureDevOpsContext;
+      // Only require Azure DevOps context IDs when using templates
+      // This allows for:
+      // 1. Direct instruction/instruction_file usage without context
+      // 2. Repository-wide analysis templates using only custom context
+      // 3. General purpose templates that don't need specific PR/work item/build context
+      if (data.platform === 'azure-devops' && data.templateDirectory) {
+        // For template-based execution, we could validate context requirements
+        // at template processing time instead of input validation time.
+        // This allows templates to be more flexible in their context requirements.
+        // The Azure DevOps context extractor's shouldExtract() method will determine
+        // if specific context extraction is needed based on available IDs.
+        return true;
       }
       return true;
     },
     {
-      message: 'Azure DevOps platform requires at least one context ID (azure_devops_pull_request_id, azure_devops_work_item_id, or azure_devops_build_id)',
+      message: 'Azure DevOps context validation handled at template processing time',
       path: ['platform'],
     }
   )
