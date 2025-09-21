@@ -56,5 +56,10 @@ jobs:
           model: "gpt-4.1-mini"
           llm_temperature: "0.3"
           llm_max_tokens: "4000"
+          post_comment: "true"
+          comment_type: "review"
+          review_event: "COMMENT"
+          pull_number: ${{ github.event.pull_request.number }}
+          repo_name: ${{ github.repository }}
           github_token: ${{ secrets.CODEREVIEW_GITHUB_TOKEN }}
           instruction_file: /tmp/openai-review-instruction.txt
