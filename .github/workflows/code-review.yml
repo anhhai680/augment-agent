@@ -49,7 +49,7 @@ jobs:
           EOF
 
       - name: Generate PR Review
-        uses: anhhai680/augment-agent@v0.3.0
+        uses: ./
         with:
           llm_provider: "openai"
           llm_api_key: ${{ secrets.OPENAI_API_KEY }}
