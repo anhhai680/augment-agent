@@ -52,6 +52,10 @@ const ActionInputsSchema = z
     llmTemperature: z.number().min(0).max(2).default(0.7),
     llmMaxTokens: z.number().int().positive('Max tokens must be a positive integer').default(4000),
     llmTimeout: z.number().int().positive('Timeout must be a positive integer').default(30000),
+    // Comment posting configuration
+    postComment: z.boolean().default(false),
+    commentType: z.enum(['comment', 'review']).default('comment'),
+    reviewEvent: z.enum(['COMMENT', 'APPROVE', 'REQUEST_CHANGES']).default('COMMENT'),
   })
   .refine(
     (data: any) => {

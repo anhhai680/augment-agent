@@ -45,11 +45,12 @@ jobs:
           Please provide specific, actionable feedback with file and line references where applicable.
           Focus on the actual code changes and their impact on the codebase.
 
-          Please post your review as a review comment on the PR. Do not approve or request changes.
+          Provide a comprehensive review that will be posted as a GitHub PR review comment.
+          Structure your response with clear sections and use Markdown formatting for readability.
           EOF
 
       - name: Generate PR Review
-        uses: anhhai680/augment-agent@v0.2.0
+        uses: ./
         with:
           llm_provider: "openai"
           llm_api_key: ${{ secrets.OPENAI_API_KEY }}
@@ -58,3 +59,8 @@ jobs:
           llm_max_tokens: "4000"
           github_token: ${{ secrets.CODEREVIEW_GITHUB_TOKEN }}
           instruction_file: /tmp/openai-review-instruction.txt
+          post_comment: "true"
+          comment_type: "review"
+          review_event: "COMMENT"
+          pull_number: ${{ github.event.pull_request.number }}
+          repo_name: ${{ github.repository }}

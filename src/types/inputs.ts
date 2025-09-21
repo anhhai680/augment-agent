@@ -44,6 +44,11 @@ export interface ActionInputs {
   llmTemperature?: number | undefined;
   llmMaxTokens?: number | undefined;
   llmTimeout?: number | undefined;
+
+  // Comment posting configuration
+  postComment?: boolean | undefined;
+  commentType?: 'comment' | 'review' | undefined;
+  reviewEvent?: 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES' | undefined;
 }
 
 export interface RepoInfo {

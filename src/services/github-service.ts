@@ -150,4 +150,41 @@ export class GitHubService {
       throw error;
     }
   }
+
+  async createPullRequestComment(pullNumber: number, body: string): Promise<void> {
+    try {
+      logger.debug(`Creating comment on PR ${pullNumber}`);
+
+      await this.octokit.rest.issues.createComment({
+        owner: this.owner,
+        repo: this.repo,
+        issue_number: pullNumber,
+        body,
+      });
+
+      logger.info(`Successfully created comment on PR ${pullNumber}`);
+    } catch (error) {
+      logger.error(`${ERROR.GITHUB.API_ERROR}: Failed to create comment on PR ${pullNumber}`, error);
+      throw error;
+    }
+  }
+
+  async createPullRequestReview(pullNumber: number, body: string, event: 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES' = 'COMMENT'): Promise<void> {
+    try {
+      logger.debug(`Creating review on PR ${pullNumber} with event: ${event}`);
+
+      await this.octokit.rest.pulls.createReview({
+        owner: this.owner,
+        repo: this.repo,
+        pull_number: pullNumber,
+        body,
+        event,
+      });
+
+      logger.info(`Successfully created review on PR ${pullNumber}`);
+    } catch (error) {
+      logger.error(`${ERROR.GITHUB.API_ERROR}: Failed to create review on PR ${pullNumber}`, error);
+      throw error;
+    }
+  }
 }

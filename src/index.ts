@@ -131,8 +131,11 @@ async function runUnifiedLLM(inputs: ActionInputs, instruction_value: string, is
     // Generate response
     const response = await llmProvider.generateResponse(instructionContent);
     
-    // Output the response
+    // Output the response to console
     console.log(response.content);
+    
+    // Post comment to PR if requested and we have the necessary context
+    await postCommentIfRequested(inputs, response.content);
     
     // Log usage information if available
     if (response.usage) {
@@ -147,6 +150,56 @@ async function runUnifiedLLM(inputs: ActionInputs, instruction_value: string, is
   } catch (error) {
     logger.error('LLM provider failed', error);
     throw error;
+  }
+}
+
+/**
+ * Post comment to PR if requested and context is available
+ */
+async function postCommentIfRequested(inputs: ActionInputs, content: string): Promise<void> {
+  // Check if we should post a comment
+  if (!inputs.postComment) {
+    logger.debug('Comment posting not requested');
+    return;
+  }
+
+  // Check if we have the necessary context for posting comments
+  if (!inputs.githubToken || !inputs.repoName || !inputs.pullNumber) {
+    logger.warning('Cannot post comment: missing required context (github_token, repo_name, pull_number)');
+    return;
+  }
+
+  try {
+    // Import GitHubService and ValidationUtils
+    const { GitHubService } = await import('./services/github-service.js');
+    const { ValidationUtils } = await import('./utils/validation.js');
+
+    // Parse repository information
+    const repoInfo = ValidationUtils.parseRepoName(inputs.repoName);
+    
+    // Create GitHub service
+    const githubService = new GitHubService({
+      token: inputs.githubToken,
+      owner: repoInfo.owner,
+      repo: repoInfo.repo,
+    });
+
+    // Post comment based on type
+    const commentType = inputs.commentType || 'comment';
+    
+    if (commentType === 'review') {
+      const reviewEvent = inputs.reviewEvent || 'COMMENT';
+      logger.info(`📝 Posting review comment to PR #${inputs.pullNumber} with event: ${reviewEvent}`);
+      await githubService.createPullRequestReview(inputs.pullNumber, content, reviewEvent as 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES');
+    } else {
+      logger.info(`💬 Posting comment to PR #${inputs.pullNumber}`);
+      await githubService.createPullRequestComment(inputs.pullNumber, content);
+    }
+    
+    logger.info('✅ Comment posted successfully');
+  } catch (error) {
+    logger.error('Failed to post comment to PR', error);
+    // Don't throw the error - the main task was successful even if comment posting failed
   }
 }
 

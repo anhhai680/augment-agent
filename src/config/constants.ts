@@ -65,6 +65,14 @@ export const INPUT_FIELD_MAP: Record<string, InputField> = {
     required: false,
     transform: (val: string) => parseInt(val, 10),
   },
+  // Comment posting configuration
+  postComment: {
+    envVar: 'INPUT_POST_COMMENT',
+    required: false,
+    transform: (val: string) => val.toLowerCase() === 'true',
+  },
+  commentType: { envVar: 'INPUT_COMMENT_TYPE', required: false },
+  reviewEvent: { envVar: 'INPUT_REVIEW_EVENT', required: false },
 };
 
 export const TEMPLATE_CONFIG = {

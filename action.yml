@@ -90,6 +90,18 @@ inputs:
     description: "Timeout for LLM API requests in milliseconds"
     required: false
     default: "30000"
+  post_comment:
+    description: "Whether to post the response as a PR comment (true/false)"
+    required: false
+    default: "false"
+  comment_type:
+    description: "Type of comment to post (comment, review)"
+    required: false
+    default: "comment"
+  review_event:
+    description: "Review event type when comment_type is 'review' (COMMENT, APPROVE, REQUEST_CHANGES)"
+    required: false
+    default: "COMMENT"
 
 runs:
   using: "composite"
@@ -135,3 +147,6 @@ runs:
         INPUT_LLM_TEMPERATURE: ${{ inputs.llm_temperature }}
         INPUT_LLM_MAX_TOKENS: ${{ inputs.llm_max_tokens }}
         INPUT_LLM_TIMEOUT: ${{ inputs.llm_timeout }}
+        INPUT_POST_COMMENT: ${{ inputs.post_comment }}
+        INPUT_COMMENT_TYPE: ${{ inputs.comment_type }}
+        INPUT_REVIEW_EVENT: ${{ inputs.review_event }}
