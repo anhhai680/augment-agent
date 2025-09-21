@@ -107,69 +107,83 @@ const ActionInputsSchema = z
   )
   .refine(
     (data: any) => {
-      const hasSessionAuth = data.augmentSessionAuth;
-      const hasTokenAuth = data.augmentApiToken && data.augmentApiUrl;
-      return hasSessionAuth || hasTokenAuth;
-    },
-    {
-      message:
-        'Either augment_session_auth or both augment_api_token and augment_api_url must be provided',
-      path: ['augmentSessionAuth', 'augmentApiToken', 'augmentApiUrl'],
-    }
-  )
-  .refine(
-    (data: any) => {
-      const hasSessionAuth = data.augmentSessionAuth;
-      const hasTokenAuth = data.augmentApiToken || data.augmentApiUrl;
-      return !(hasSessionAuth && hasTokenAuth);
-    },
-    {
-      message:
-        'Cannot use both augment_session_auth and augment_api_token/augment_api_url simultaneously',
-      path: ['augmentSessionAuth', 'augmentApiToken', 'augmentApiUrl'],
-    }
-  )
-  .refine(
-    (data: any) => {
-      if (!data.augmentSessionAuth) return true;
-      try {
-        JSON.parse(data.augmentSessionAuth);
-        return true;
-      } catch {
-        return false;
+      // Only require Augment API credentials when using 'auggie' as LLM provider
+      if (data.llmProvider === 'auggie') {
+        const hasSessionAuth = data.augmentSessionAuth;
+        const hasTokenAuth = data.augmentApiToken && data.augmentApiUrl;
+        return hasSessionAuth || hasTokenAuth;
       }
+      return true;
     },
     {
-      message: 'augment_session_auth must be valid JSON',
+      message:
+        'Either augment_session_auth or both augment_api_token and augment_api_url must be provided when using auggie LLM provider',
+      path: ['augmentSessionAuth', 'augmentApiToken', 'augmentApiUrl'],
+    }
+  )
+  .refine(
+    (data: any) => {
+      // Only validate Augment auth conflicts when using 'auggie' as LLM provider
+      if (data.llmProvider === 'auggie') {
+        const hasSessionAuth = data.augmentSessionAuth;
+        const hasTokenAuth = data.augmentApiToken || data.augmentApiUrl;
+        return !(hasSessionAuth && hasTokenAuth);
+      }
+      return true;
+    },
+    {
+      message:
+        'Cannot use both augment_session_auth and augment_api_token/augment_api_url simultaneously when using auggie LLM provider',
+      path: ['augmentSessionAuth', 'augmentApiToken', 'augmentApiUrl'],
+    }
+  )
+  .refine(
+    (data: any) => {
+      // Only validate Augment session auth JSON when using 'auggie' and session auth is provided
+      if (data.llmProvider === 'auggie' && data.augmentSessionAuth) {
+        try {
+          JSON.parse(data.augmentSessionAuth);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: 'augment_session_auth must be valid JSON when using auggie LLM provider',
       path: ['augmentSessionAuth'],
     }
   )
   .refine(
     (data: any) => {
-      if (!data.augmentApiUrl) return true;
-      try {
-        // More robust URL validation pattern that handles paths, query params, etc.
-        const urlPattern = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[-a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&=\/]*)$/;
-        const url = data.augmentApiUrl.trim();
-        
-        // Check basic pattern and ensure it has a proper domain structure
-        if (!urlPattern.test(url)) return false;
-        
-        // Additional validation: ensure there's a domain with TLD after the protocol
-        const urlParts = url.split('://');
-        if (urlParts.length !== 2) return false;
-        
-        const domainPart = urlParts[1].split('/')[0].split('?')[0]; // Extract domain part
-        const domainParts = domainPart.split('.');
-        
-        // Must have at least one dot in domain (e.g., example.com)
-        return domainParts.length >= 2 && domainParts.every((part: string) => part.length > 0);
-      } catch {
-        return false;
+      // Only validate Augment API URL when using 'auggie' and URL is provided
+      if (data.llmProvider === 'auggie' && data.augmentApiUrl) {
+        try {
+          // More robust URL validation pattern that handles paths, query params, etc.
+          const urlPattern = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[-a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&=\/]*)$/;
+          const url = data.augmentApiUrl.trim();
+          
+          // Check basic pattern and ensure it has a proper domain structure
+          if (!urlPattern.test(url)) return false;
+          
+          // Additional validation: ensure there's a domain with TLD after the protocol
+          const urlParts = url.split('://');
+          if (urlParts.length !== 2) return false;
+          
+          const domainPart = urlParts[1].split('/')[0].split('?')[0]; // Extract domain part
+          const domainParts = domainPart.split('.');
+          
+          // Must have at least one dot in domain (e.g., example.com)
+          return domainParts.length >= 2 && domainParts.every((part: string) => part.length > 0);
+        } catch {
+          return false;
+        }
       }
+      return true;
     },
     {
-      message: 'Augment API URL must be a valid HTTP(S) URL with a proper domain',
+      message: 'Augment API URL must be a valid HTTP(S) URL with a proper domain when using auggie LLM provider',
       path: ['augmentApiUrl'],
     }
   )
