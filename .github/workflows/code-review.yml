@@ -1,11 +1,14 @@
-name: Augment Agent - OpenAI Code Review
+name: Agent Code Review
 on:
   pull_request:
     types: [opened]
 
 jobs:
-  openai-code-review:
+  code-review:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
