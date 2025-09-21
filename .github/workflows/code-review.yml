@@ -1,4 +1,4 @@
-name: Agent Code Review
+name: Auto-review PRs
 on:
   pull_request:
     types: [opened, synchronize]
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  code-review:
+  review:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -48,7 +48,7 @@ jobs:
           Please post your review as a review comment on the PR. Do not approve or request changes.
           EOF
 
-      - name: OpenAI Code Review
+      - name: Generate PR Review
         uses: anhhai680/augment-agent@v0.2.0
         with:
           llm_provider: "openai"

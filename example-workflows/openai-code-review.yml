@@ -51,5 +51,5 @@ jobs:
           model: "gpt-4"
           llm_temperature: "0.3"
           llm_max_tokens: "4000"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.CODEREVIEW_GITHUB_TOKEN }}
           instruction_file: /tmp/openai-review-instruction.txt

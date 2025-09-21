@@ -44,5 +44,5 @@ jobs:
         uses: augmentcode/augment-agent@v0
         with:
           augment_session_auth: ${{ secrets.AUGMENT_SESSION_AUTH }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.CODEREVIEW_GITHUB_TOKEN }}
           instruction_file: /tmp/review-instruction.txt
