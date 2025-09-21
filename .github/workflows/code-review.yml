@@ -1,7 +1,9 @@
 name: Agent Code Review
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
+    branches:
+      - main
 
 jobs:
   code-review:
