@@ -50,39 +50,56 @@ jobs:
           - OpenAI-specific considerations (AI safety, bias, etc.)
 
           **Output Format:**
-          For inline comments to work properly, you MUST respond with ONLY the following JSON format:
+          Write your review in natural, human-friendly language first, then add the structured data.
+
+          **Example Format:**
+          ```
+          ## Code Review Summary
+          
+          I've reviewed the pull request and found several areas for improvement. Overall, the changes look good but there are some performance and maintainability concerns that should be addressed.
+
+          ### Key Findings
+          - Line 5 in `.github/workflows/code-review.yml` needs better documentation
+          - Line 23 in `src/services/github-service.ts` requires proper error handling
+          - Line 15 in `src/services/llm/llm-factory.ts` could benefit from type validation
+
+          ### Recommendations
+          Please address these inline comments for better code quality and maintainability.
 
           ```json
           {
-            "summary": "Brief overall review summary",
+            "summary": "Brief summary for metadata",
             "line_comments": [
               {
-                "file": "exact/file/path.ts",
-                "line": 42,
-                "comment": "This variable should be const instead of let for better performance",
+                "file": ".github/workflows/code-review.yml",
+                "line": 5,
+                "comment": "Consider adding comments to explain the purpose of each job and step for better readability",
                 "side": "RIGHT"
               },
               {
-                "file": "exact/file/path.ts", 
-                "line": 58,
-                "comment": "Consider adding error handling for this async operation",
+                "file": "src/services/github-service.ts",
+                "line": 23,
+                "comment": "Ensure that any API calls made here have proper error handling to manage failed requests gracefully",
                 "side": "RIGHT"
               },
               {
-                "file": "another/file.js",
+                "file": "src/services/llm/llm-factory.ts",
                 "line": 15,
-                "comment": "This function is too complex, consider breaking it down",
+                "comment": "The factory pattern is well implemented, but consider adding type checks or validations to ensure robustness",
                 "side": "RIGHT"
               }
             ]
           }
           ```
+          ```
 
           **IMPORTANT REQUIREMENTS:**
-          - Respond with ONLY the JSON format above, no additional text
+          - Write your review in natural, human-friendly language first
+          - Add the JSON section at the end for inline comment functionality  
           - Use EXACT file paths from the "Changed Files" list above
           - Use specific line numbers from the actual changes (examine the diff)
-          - Include "side": "RIGHT" for new/modified lines 
+          - Include "side": "RIGHT" for new/modified lines
+          - The JSON is for technical purposes only - users will see your natural language review 
           - Put each piece of feedback as a separate object in line_comments array
           - Each line_comment must have: file, line, comment, and side fields
           - Keep summary brief (1-2 sentences)

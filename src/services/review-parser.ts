@@ -47,15 +47,30 @@ export class ReviewParser {
       // Validate the structure - handle both nested and flat formats
       if (parsed && typeof parsed === 'object' && typeof parsed.summary === 'string') {
         
+        // Extract natural language summary from content if available
+        let naturalLanguageSummary = parsed.summary;
+        if (jsonMatch) {
+          // If JSON was in code fences, extract the text before it
+          const beforeJson = content.substring(0, content.indexOf('```json')).trim();
+          if (beforeJson && beforeJson.length > 50) {
+            // Use the natural language content as summary
+            naturalLanguageSummary = beforeJson;
+            logger.debug('Using natural language content as summary instead of JSON summary');
+          }
+        }
+        
         // Check if it's the nested format with files
         if (parsed.files && typeof parsed.files === 'object') {
           logger.info('Successfully validated structured review format (nested)');
           logger.debug('Parsed review structure:', {
-            summary: parsed.summary,
+            summary: naturalLanguageSummary.substring(0, 100) + '...',
             fileCount: Object.keys(parsed.files).length,
             files: Object.keys(parsed.files)
           });
-          return parsed as StructuredReview;
+          return {
+            ...parsed,
+            summary: naturalLanguageSummary
+          } as StructuredReview;
         }
         
         // Check if it's the flat format with line_comments array
@@ -64,7 +79,7 @@ export class ReviewParser {
           
           // Convert flat format to nested format
           const nestedFormat: StructuredReview = {
-            summary: parsed.summary,
+            summary: naturalLanguageSummary,
             files: {}
           };
           
@@ -89,6 +104,7 @@ export class ReviewParser {
           }
           
           logger.debug('Converted flat format to nested:', {
+            summary: naturalLanguageSummary.substring(0, 100) + '...',
             fileCount: Object.keys(nestedFormat.files).length,
             files: Object.keys(nestedFormat.files)
           });
