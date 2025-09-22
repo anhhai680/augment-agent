@@ -11,21 +11,36 @@ export class ReviewParser {
    */
   static parseStructuredReview(content: string): StructuredReview | null {
     try {
+      logger.debug('Attempting to parse structured JSON review');
+      
       // Try to find JSON in the content
       const jsonMatch = content.match(/```json\s*\n([\s\S]*?)\n\s*```/);
       let jsonString = jsonMatch ? jsonMatch[1] : content;
+
+      if (jsonMatch) {
+        logger.debug('Found JSON within code fences');
+      } else {
+        logger.debug('No code fences found, trying to parse entire content as JSON');
+      }
 
       // Try to find JSON block without code fences
       if (!jsonMatch) {
         const jsonBlockMatch = content.match(/\{[\s\S]*\}/);
         if (jsonBlockMatch) {
           jsonString = jsonBlockMatch[0];
+          logger.debug('Found JSON block without code fences');
         }
       }
 
       if (!jsonString) {
+        logger.debug('No JSON content found');
         return null;
       }
+
+      logger.debug('Attempting to parse JSON string', { 
+        jsonLength: jsonString.length,
+        jsonPreview: jsonString.substring(0, 100) + '...'
+      });
 
       const parsed = JSON.parse(jsonString);
       
@@ -33,9 +48,16 @@ export class ReviewParser {
       if (parsed && typeof parsed === 'object' && 
           typeof parsed.summary === 'string' && 
           parsed.files && typeof parsed.files === 'object') {
+        logger.info('Successfully validated structured review format');
+        logger.debug('Parsed review structure:', {
+          summary: parsed.summary,
+          fileCount: Object.keys(parsed.files).length,
+          files: Object.keys(parsed.files)
+        });
         return parsed as StructuredReview;
       }
       
+      logger.debug('JSON parsed but structure validation failed');
       return null;
     } catch (error) {
       logger.debug('Failed to parse as structured JSON review', {
@@ -190,15 +212,27 @@ export class ReviewParser {
    * Main parsing function that tries structured first, then falls back to markdown
    */
   static parseReview(content: string): ParsedReview {
+    logger.info('Starting review parsing process');
+    logger.debug('Review content preview:', { 
+      contentLength: content.length,
+      contentPreview: content.substring(0, 200) + '...' 
+    });
+
     // First try to parse as structured JSON
     const structured = this.parseStructuredReview(content);
     
     if (structured) {
-      return this.convertStructuredToParsed(structured);
+      logger.info('Successfully parsed structured JSON review');
+      const parsed = this.convertStructuredToParsed(structured);
+      logger.info(`Converted to ${parsed.comments.length} inline comments`);
+      return parsed;
     }
 
+    logger.info('JSON parsing failed, trying markdown parsing');
     // Fall back to markdown parsing
-    return this.parseMarkdownReview(content);
+    const markdownParsed = this.parseMarkdownReview(content);
+    logger.info(`Markdown parsing found ${markdownParsed.comments.length} comments`);
+    return markdownParsed;
   }
 
   /**
@@ -207,7 +241,14 @@ export class ReviewParser {
   private static convertStructuredToParsed(structured: StructuredReview): ParsedReview {
     const comments: GitHubReviewComment[] = [];
 
+    logger.debug('Converting structured review to parsed format');
+    
     for (const [filePath, fileReview] of Object.entries(structured.files)) {
+      logger.debug(`Processing file: ${filePath}`, {
+        lineComments: fileReview.line_comments.length,
+        generalComments: fileReview.general_comments.length
+      });
+
       // Add line-specific comments
       for (const lineComment of fileReview.line_comments) {
         const reviewComment: GitHubReviewComment = {
@@ -235,6 +276,8 @@ export class ReviewParser {
         });
       }
     }
+
+    logger.debug(`Converted ${comments.length} total comments from structured format`);
 
     return {
       summary: structured.summary,

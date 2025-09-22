@@ -22,7 +22,11 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ secrets.CODEREVIEW_GITHUB_TOKEN }}
         run: |
+          # Get the list of changed files for the LLM to reference
+          CHANGED_FILES=$(gh pr diff $PR_NUMBER --name-only)
+          
           cat > /tmp/openai-review-instruction.txt << EOF
           Perform a comprehensive code review of the following pull request using OpenAI GPT-4:
 
@@ -31,6 +35,9 @@ jobs:
           - Repository: ${REPOSITORY}
           - Base Branch: ${BASE_BRANCH}
           - Head Branch: ${HEAD_BRANCH}
+
+          **Changed Files in this PR:**
+          $CHANGED_FILES
 
           **Review Focus:**
           Analyze the modified files and provide detailed feedback on:
@@ -43,32 +50,49 @@ jobs:
           - OpenAI-specific considerations (AI safety, bias, etc.)
 
           **Output Format:**
-          Please provide your review in the following JSON format for better organization:
+          For inline comments to work properly, you MUST respond with ONLY the following JSON format:
 
           ```json
           {
-            "summary": "Overall review summary and general comments",
+            "summary": "Brief overall review summary",
             "files": {
-              "path/to/file.js": {
+              "src/example.ts": {
                 "line_comments": [
                   {
                     "line": 42,
-                    "comment": "Specific feedback for this line",
+                    "comment": "This variable should be const instead of let for better performance",
+                    "side": "RIGHT"
+                  },
+                  {
+                    "line": 58,
+                    "comment": "Consider adding error handling for this async operation",
                     "side": "RIGHT"
                   }
                 ],
-                "general_comments": ["General feedback about this file"]
+                "general_comments": ["Overall this file has good structure but needs better error handling"]
+              },
+              "src/another-file.js": {
+                "line_comments": [
+                  {
+                    "line": 15,
+                    "comment": "This function is too complex, consider breaking it down",
+                    "side": "RIGHT"
+                  }
+                ],
+                "general_comments": []
               }
             }
           }
           ```
 
-          - Use specific line numbers for targeted feedback
-          - Include both line-specific comments and general file feedback
-          - Provide specific, actionable feedback with file and line references
+          **IMPORTANT REQUIREMENTS:**
+          - Respond with ONLY the JSON format above, no additional text
+          - Use EXACT file paths from the "Changed Files" list above
+          - Use specific line numbers from the actual changes (examine the diff)
+          - Include "side": "RIGHT" for new/modified lines 
+          - Put detailed feedback in line_comments array
+          - Keep summary brief (1-2 sentences)
           - Focus on the actual code changes and their impact on the codebase
-
-          Please post your review as a review comment on the PR. Do not approve or request changes.
           EOF
 
       - name: Generate PR Review

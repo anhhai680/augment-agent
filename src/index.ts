@@ -188,12 +188,23 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
     // Check if inline comments are requested
     if (inputs.useInlineComments) {
       logger.info(`📝 Processing inline comments for PR #${inputs.pullNumber}`);
+      logger.debug('Inline comment settings:', {
+        useInlineComments: inputs.useInlineComments,
+        strategy: inputs.inlineCommentStrategy || 'review_with_comments'
+      });
       
       // Parse the review content for structured comments
       const parsedReview = ReviewParser.parseReview(content);
       
+      logger.info(`Review parsing result: ${parsedReview.comments.length} comments found`, {
+        hasInlineComments: parsedReview.hasInlineComments,
+        summaryLength: parsedReview.summary.length
+      });
+      
       if (parsedReview.comments && parsedReview.comments.length > 0) {
         const strategy = inputs.inlineCommentStrategy || 'review_with_comments';
+        
+        logger.info(`Using strategy: ${strategy} for ${parsedReview.comments.length} comments`);
         
         if (strategy === 'review_with_comments') {
           // Post all comments as part of a single review
@@ -226,6 +237,7 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
       }
     } else {
       // Post regular comment
+      logger.info('Inline comments disabled, posting regular comment');
       await postRegularComment(githubService, inputs, content);
     }
     

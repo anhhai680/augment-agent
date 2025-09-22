@@ -203,11 +203,30 @@ export class GitHubService {
       if (!commitId) {
         const prInfo = await this.getPullRequest(pullNumber);
         commitId = prInfo.head.sha;
+        logger.debug(`Using commit SHA: ${commitId}`);
       }
+
+      // Get PR files to validate paths
+      const prFiles = await this.getPullRequestFiles(pullNumber);
+      const validPaths = new Set(prFiles.map(f => f.filename));
+      logger.debug('Valid file paths in PR:', { validPaths: Array.from(validPaths) });
 
       // Filter out comments without required fields and map to GitHub API format
       const validComments = comments
-        .filter(comment => comment.line !== undefined && comment.path)
+        .filter(comment => {
+          if (!comment.line || !comment.path) {
+            logger.debug(`Filtering out comment: missing line (${comment.line}) or path (${comment.path})`);
+            return false;
+          }
+          if (!validPaths.has(comment.path)) {
+            logger.warning(`File path "${comment.path}" not found in PR changes.`, { 
+              commentPath: comment.path,
+              availablePaths: Array.from(validPaths) 
+            });
+            return false;
+          }
+          return true;
+        })
         .map(comment => {
           const mappedComment: any = {
             path: comment.path,
@@ -224,7 +243,16 @@ export class GitHubService {
           return mappedComment;
         });
 
-      await this.octokit.rest.pulls.createReview({
+      logger.info(`Filtered ${validComments.length} valid comments from ${comments.length} total`, {
+        validComments: validComments.map(c => ({ path: c.path, line: c.line }))
+      });
+
+      if (validComments.length === 0) {
+        logger.warning('No valid inline comments to post - all comments were filtered out');
+        return;
+      }
+
+      const reviewData = {
         owner: this.owner,
         repo: this.repo,
         pull_number: pullNumber,
@@ -232,7 +260,11 @@ export class GitHubService {
         body,
         event,
         comments: validComments
-      });
+      };
+
+      logger.debug('Creating review with data:', reviewData);
+
+      await this.octokit.rest.pulls.createReview(reviewData);
 
       logger.info(`Successfully created review with ${validComments.length} inline comments on PR ${pullNumber}`);
     } catch (error) {
