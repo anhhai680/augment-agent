@@ -206,12 +206,20 @@ export class GitHubService {
         logger.debug(`Using commit SHA: ${commitId}`);
       }
 
-      // Get PR files to validate paths
+      // Get PR files to validate paths and line numbers
       const prFiles = await this.getPullRequestFiles(pullNumber);
       const validPaths = new Set(prFiles.map(f => f.filename));
       logger.debug('Valid file paths in PR:', { validPaths: Array.from(validPaths) });
 
-      // Filter out comments without required fields and map to GitHub API format
+      // Get the actual diff to validate line numbers
+      const diffData = await this.getPullRequestDiff(pullNumber);
+      const validLines = this.extractValidLinesFromDiff(diffData.content);
+      logger.debug('Valid diff lines extracted:', { 
+        fileCount: Object.keys(validLines).length,
+        files: Object.keys(validLines)
+      });
+
+      // Filter out comments without required fields and validate against diff
       const validComments = comments
         .filter(comment => {
           if (!comment.line || !comment.path) {
@@ -225,6 +233,17 @@ export class GitHubService {
             });
             return false;
           }
+          
+          // Check if the line number is valid in the diff
+          const fileValidLines = validLines[comment.path];
+          if (!fileValidLines || !fileValidLines.has(comment.line!)) {
+            logger.warning(`Line ${comment.line} in "${comment.path}" is not part of the diff.`, {
+              commentLine: comment.line,
+              validLines: fileValidLines ? Array.from(fileValidLines).slice(0, 10) : []
+            });
+            return false;
+          }
+          
           return true;
         })
         .map(comment => {
@@ -345,5 +364,65 @@ export class GitHubService {
       logger.error(`${ERROR.GITHUB.API_ERROR}: Failed to create individual comment on PR ${pullNumber}`, error);
       throw error;
     }
+  }
+
+  /**
+   * Extract valid line numbers from diff data
+   * Returns a map of file paths to sets of valid line numbers
+   */
+  private extractValidLinesFromDiff(diffData: string): Record<string, Set<number>> {
+    const validLines: Record<string, Set<number>> = {};
+    
+    // Split diff into file sections
+    const fileSections = diffData.split(/^diff --git /m).slice(1);
+    
+    for (const section of fileSections) {
+      const lines = section.split('\n');
+      
+      // Extract file path from the first line
+      const filePathMatch = lines[0]?.match(/a\/(.+?) b\/(.+)/);
+      if (!filePathMatch || !filePathMatch[2]) continue;
+      
+      const filePath = filePathMatch[2]; // Use the 'b/' path (destination)
+      validLines[filePath] = new Set<number>();
+      
+      let currentLine = 0;
+      let inHunk = false;
+      
+      for (const line of lines) {
+        // Look for hunk headers like @@ -1,4 +1,6 @@
+        const hunkMatch = line.match(/^@@ -\d+,?\d* \+(\d+),?\d* @@/);
+        if (hunkMatch && hunkMatch[1]) {
+          currentLine = parseInt(hunkMatch[1], 10);
+          inHunk = true;
+          continue;
+        }
+        
+        if (!inHunk) continue;
+        
+        // Process lines in the hunk
+        if (line.startsWith('+')) {
+          // Added line - valid for comments
+          validLines[filePath]?.add(currentLine);
+          currentLine++;
+        } else if (line.startsWith('-')) {
+          // Deleted line - don't increment current line
+          // Note: Comments on deleted lines use 'LEFT' side
+          continue;
+        } else if (line.startsWith(' ')) {
+          // Context line - valid for comments
+          validLines[filePath]?.add(currentLine);
+          currentLine++;
+        } else if (line.startsWith('\\')) {
+          // "No newline at end of file" - ignore
+          continue;
+        } else {
+          // End of hunk or other content
+          inHunk = false;
+        }
+      }
+    }
+    
+    return validLines;
   }
 }
