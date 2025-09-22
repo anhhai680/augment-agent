@@ -185,6 +185,15 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
       repo: repoInfo.repo,
     });
 
+    // Log all relevant input flags for debugging
+    logger.info('Comment posting configuration:', {
+      postComment: inputs.postComment,
+      useInlineComments: inputs.useInlineComments,
+      inlineCommentStrategy: inputs.inlineCommentStrategy,
+      commentType: inputs.commentType,
+      reviewEvent: inputs.reviewEvent
+    });
+
     // Check if inline comments are requested
     if (inputs.useInlineComments) {
       logger.info(`📝 Processing inline comments for PR #${inputs.pullNumber}`);
@@ -232,7 +241,12 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
         logger.info('✅ Inline comments posted successfully');
       } else {
         // Fall back to regular comment if no structured comments found
-        logger.info('No structured comments found, falling back to regular comment');
+        logger.warning('No structured comments found, falling back to regular comment');
+        logger.debug('Parsed review details:', {
+          summaryLength: parsedReview.summary.length,
+          commentsFound: parsedReview.comments.length,
+          hasInlineComments: parsedReview.hasInlineComments
+        });
         await postRegularComment(githubService, inputs, content);
       }
     } else {

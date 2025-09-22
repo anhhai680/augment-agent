@@ -249,6 +249,15 @@ export class GitHubService {
 
       if (validComments.length === 0) {
         logger.warning('No valid inline comments to post - all comments were filtered out');
+        // Don't throw an error, just create a regular review with the summary
+        await this.octokit.rest.pulls.createReview({
+          owner: this.owner,
+          repo: this.repo,
+          pull_number: pullNumber,
+          commit_id: commitId,
+          body: body || 'Code review completed',
+          event
+        });
         return;
       }
 
@@ -264,9 +273,26 @@ export class GitHubService {
 
       logger.debug('Creating review with data:', reviewData);
 
-      await this.octokit.rest.pulls.createReview(reviewData);
-
-      logger.info(`Successfully created review with ${validComments.length} inline comments on PR ${pullNumber}`);
+      try {
+        await this.octokit.rest.pulls.createReview(reviewData);
+        logger.info(`Successfully created review with ${validComments.length} inline comments on PR ${pullNumber}`);
+      } catch (apiError) {
+        logger.error('GitHub API error when creating review with comments:', apiError);
+        
+        // If the API call fails, try to create a regular review instead
+        logger.info('Falling back to regular review due to API error');
+        await this.octokit.rest.pulls.createReview({
+          owner: this.owner,
+          repo: this.repo,
+          pull_number: pullNumber,
+          commit_id: commitId,
+          body: `${body}\n\nNote: Attempted to post ${validComments.length} inline comments but encountered API issues.`,
+          event
+        });
+        
+        // Re-throw the original error for debugging
+        throw apiError;
+      }
     } catch (error) {
       logger.error(`${ERROR.GITHUB.API_ERROR}: Failed to create review with comments on PR ${pullNumber}`, error);
       throw error;

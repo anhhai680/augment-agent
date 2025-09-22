@@ -44,17 +44,57 @@ export class ReviewParser {
 
       const parsed = JSON.parse(jsonString);
       
-      // Validate the structure
-      if (parsed && typeof parsed === 'object' && 
-          typeof parsed.summary === 'string' && 
-          parsed.files && typeof parsed.files === 'object') {
-        logger.info('Successfully validated structured review format');
-        logger.debug('Parsed review structure:', {
-          summary: parsed.summary,
-          fileCount: Object.keys(parsed.files).length,
-          files: Object.keys(parsed.files)
-        });
-        return parsed as StructuredReview;
+      // Validate the structure - handle both nested and flat formats
+      if (parsed && typeof parsed === 'object' && typeof parsed.summary === 'string') {
+        
+        // Check if it's the nested format with files
+        if (parsed.files && typeof parsed.files === 'object') {
+          logger.info('Successfully validated structured review format (nested)');
+          logger.debug('Parsed review structure:', {
+            summary: parsed.summary,
+            fileCount: Object.keys(parsed.files).length,
+            files: Object.keys(parsed.files)
+          });
+          return parsed as StructuredReview;
+        }
+        
+        // Check if it's the flat format with line_comments array
+        if (parsed.line_comments && Array.isArray(parsed.line_comments)) {
+          logger.info('Successfully validated structured review format (flat) - converting to nested');
+          
+          // Convert flat format to nested format
+          const nestedFormat: StructuredReview = {
+            summary: parsed.summary,
+            files: {}
+          };
+          
+          // Group line comments by file
+          for (const comment of parsed.line_comments) {
+            if (comment.file && comment.line && comment.comment) {
+              const filePath = comment.file;
+              
+              if (!nestedFormat.files[filePath]) {
+                nestedFormat.files[filePath] = {
+                  line_comments: [],
+                  general_comments: []
+                };
+              }
+              
+              nestedFormat.files[filePath].line_comments.push({
+                line: comment.line,
+                comment: comment.comment,
+                side: comment.side || 'RIGHT'
+              });
+            }
+          }
+          
+          logger.debug('Converted flat format to nested:', {
+            fileCount: Object.keys(nestedFormat.files).length,
+            files: Object.keys(nestedFormat.files)
+          });
+          
+          return nestedFormat;
+        }
       }
       
       logger.debug('JSON parsed but structure validation failed');

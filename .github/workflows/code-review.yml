@@ -55,33 +55,26 @@ jobs:
           ```json
           {
             "summary": "Brief overall review summary",
-            "files": {
-              "src/example.ts": {
-                "line_comments": [
-                  {
-                    "line": 42,
-                    "comment": "This variable should be const instead of let for better performance",
-                    "side": "RIGHT"
-                  },
-                  {
-                    "line": 58,
-                    "comment": "Consider adding error handling for this async operation",
-                    "side": "RIGHT"
-                  }
-                ],
-                "general_comments": ["Overall this file has good structure but needs better error handling"]
+            "line_comments": [
+              {
+                "file": "exact/file/path.ts",
+                "line": 42,
+                "comment": "This variable should be const instead of let for better performance",
+                "side": "RIGHT"
               },
-              "src/another-file.js": {
-                "line_comments": [
-                  {
-                    "line": 15,
-                    "comment": "This function is too complex, consider breaking it down",
-                    "side": "RIGHT"
-                  }
-                ],
-                "general_comments": []
+              {
+                "file": "exact/file/path.ts", 
+                "line": 58,
+                "comment": "Consider adding error handling for this async operation",
+                "side": "RIGHT"
+              },
+              {
+                "file": "another/file.js",
+                "line": 15,
+                "comment": "This function is too complex, consider breaking it down",
+                "side": "RIGHT"
               }
-            }
+            ]
           }
           ```
 
@@ -90,7 +83,8 @@ jobs:
           - Use EXACT file paths from the "Changed Files" list above
           - Use specific line numbers from the actual changes (examine the diff)
           - Include "side": "RIGHT" for new/modified lines 
-          - Put detailed feedback in line_comments array
+          - Put each piece of feedback as a separate object in line_comments array
+          - Each line_comment must have: file, line, comment, and side fields
           - Keep summary brief (1-2 sentences)
           - Focus on the actual code changes and their impact on the codebase
           EOF
