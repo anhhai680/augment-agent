@@ -170,9 +170,10 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
   }
 
   try {
-    // Import GitHubService and ValidationUtils
+    // Import required services
     const { GitHubService } = await import('./services/github-service.js');
     const { ValidationUtils } = await import('./utils/validation.js');
+    const { ReviewParser } = await import('./services/review-parser.js');
 
     // Parse repository information
     const repoInfo = ValidationUtils.parseRepoName(inputs.repoName);
@@ -184,23 +185,72 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
       repo: repoInfo.repo,
     });
 
-    // Post comment based on type
-    const commentType = inputs.commentType || 'comment';
-    
-    if (commentType === 'review') {
-      const reviewEvent = inputs.reviewEvent || 'COMMENT';
-      logger.info(`📝 Posting review comment to PR #${inputs.pullNumber} with event: ${reviewEvent}`);
-      await githubService.createPullRequestReview(inputs.pullNumber, content, reviewEvent as 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES');
+    // Check if inline comments are requested
+    if (inputs.useInlineComments) {
+      logger.info(`📝 Processing inline comments for PR #${inputs.pullNumber}`);
+      
+      // Parse the review content for structured comments
+      const parsedReview = ReviewParser.parseReview(content);
+      
+      if (parsedReview.comments && parsedReview.comments.length > 0) {
+        const strategy = inputs.inlineCommentStrategy || 'review_with_comments';
+        
+        if (strategy === 'review_with_comments') {
+          // Post all comments as part of a single review
+          logger.info(`📝 Posting ${parsedReview.comments.length} inline comments as review to PR #${inputs.pullNumber}`);
+          const reviewEvent = inputs.reviewEvent || 'COMMENT';
+          await githubService.createPullRequestReviewWithComments(
+            inputs.pullNumber,
+            parsedReview.summary || 'Code review',
+            parsedReview.comments,
+            reviewEvent as 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES'
+          );
+        } else if (strategy === 'individual_comments') {
+          // Post each comment individually
+          logger.info(`� Posting ${parsedReview.comments.length} individual inline comments to PR #${inputs.pullNumber}`);
+          for (const comment of parsedReview.comments) {
+            await githubService.createIndividualReviewComment(inputs.pullNumber, comment);
+          }
+          
+          // Also post a summary comment if available
+          if (parsedReview.summary) {
+            await githubService.createPullRequestComment(inputs.pullNumber, parsedReview.summary);
+          }
+        }
+        
+        logger.info('✅ Inline comments posted successfully');
+      } else {
+        // Fall back to regular comment if no structured comments found
+        logger.info('No structured comments found, falling back to regular comment');
+        await postRegularComment(githubService, inputs, content);
+      }
     } else {
-      logger.info(`💬 Posting comment to PR #${inputs.pullNumber}`);
-      await githubService.createPullRequestComment(inputs.pullNumber, content);
+      // Post regular comment
+      await postRegularComment(githubService, inputs, content);
     }
     
-    logger.info('✅ Comment posted successfully');
   } catch (error) {
     logger.error('Failed to post comment to PR', error);
     // Don't throw the error - the main task was successful even if comment posting failed
   }
+}
+
+/**
+ * Post a regular comment (non-inline)
+ */
+async function postRegularComment(githubService: any, inputs: ActionInputs, content: string): Promise<void> {
+  const commentType = inputs.commentType || 'comment';
+  
+  if (commentType === 'review') {
+    const reviewEvent = inputs.reviewEvent || 'COMMENT';
+    logger.info(`📝 Posting review comment to PR #${inputs.pullNumber} with event: ${reviewEvent}`);
+    await githubService.createPullRequestReview(inputs.pullNumber, content, reviewEvent as 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES');
+  } else {
+    logger.info(`💬 Posting comment to PR #${inputs.pullNumber}`);
+    await githubService.createPullRequestComment(inputs.pullNumber, content);
+  }
+  
+  logger.info('✅ Comment posted successfully');
 }
 
 /**

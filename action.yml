@@ -102,6 +102,14 @@ inputs:
     description: "Review event type when comment_type is 'review' (COMMENT, APPROVE, REQUEST_CHANGES)"
     required: false
     default: "COMMENT"
+  use_inline_comments:
+    description: "Whether to post inline comments on specific lines (true/false)"
+    required: false
+    default: "false"
+  inline_comment_strategy:
+    description: "Strategy for inline comments (review_with_comments, individual_comments)"
+    required: false
+    default: "review_with_comments"
 
 runs:
   using: "composite"
@@ -150,3 +158,5 @@ runs:
         INPUT_POST_COMMENT: ${{ inputs.post_comment }}
         INPUT_COMMENT_TYPE: ${{ inputs.comment_type }}
         INPUT_REVIEW_EVENT: ${{ inputs.review_event }}
+        INPUT_USE_INLINE_COMMENTS: ${{ inputs.use_inline_comments }}
+        INPUT_INLINE_COMMENT_STRATEGY: ${{ inputs.inline_comment_strategy }}

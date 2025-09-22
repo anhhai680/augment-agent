@@ -73,6 +73,12 @@ export const INPUT_FIELD_MAP: Record<string, InputField> = {
   },
   commentType: { envVar: 'INPUT_COMMENT_TYPE', required: false },
   reviewEvent: { envVar: 'INPUT_REVIEW_EVENT', required: false },
+  useInlineComments: {
+    envVar: 'INPUT_USE_INLINE_COMMENTS',
+    required: false,
+    transform: (val: string) => val.toLowerCase() === 'true',
+  },
+  inlineCommentStrategy: { envVar: 'INPUT_INLINE_COMMENT_STRATEGY', required: false },
 };
 
 export const TEMPLATE_CONFIG = {

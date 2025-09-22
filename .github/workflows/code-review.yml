@@ -42,8 +42,31 @@ jobs:
           - Code maintainability and readability
           - OpenAI-specific considerations (AI safety, bias, etc.)
 
-          Please provide specific, actionable feedback with file and line references where applicable.
-          Focus on the actual code changes and their impact on the codebase.
+          **Output Format:**
+          Please provide your review in the following JSON format for better organization:
+
+          ```json
+          {
+            "summary": "Overall review summary and general comments",
+            "files": {
+              "path/to/file.js": {
+                "line_comments": [
+                  {
+                    "line": 42,
+                    "comment": "Specific feedback for this line",
+                    "side": "RIGHT"
+                  }
+                ],
+                "general_comments": ["General feedback about this file"]
+              }
+            }
+          }
+          ```
+
+          - Use specific line numbers for targeted feedback
+          - Include both line-specific comments and general file feedback
+          - Provide specific, actionable feedback with file and line references
+          - Focus on the actual code changes and their impact on the codebase
 
           Please post your review as a review comment on the PR. Do not approve or request changes.
           EOF
@@ -53,12 +76,14 @@ jobs:
         with:
           llm_provider: "openai"
           llm_api_key: ${{ secrets.OPENAI_API_KEY }}
-          model: "gpt-4.1-mini"
+          model: "gpt-4o-mini"
           llm_temperature: "0.3"
           llm_max_tokens: "4000"
           post_comment: "true"
           comment_type: "review"
           review_event: "COMMENT"
+          use_inline_comments: "true"
+          inline_comment_strategy: "review_with_comments"
           pull_number: ${{ github.event.pull_request.number }}
           repo_name: ${{ github.repository }}
           github_token: ${{ secrets.CODEREVIEW_GITHUB_TOKEN }}

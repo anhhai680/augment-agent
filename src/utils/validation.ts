@@ -56,6 +56,8 @@ const ActionInputsSchema = z
     postComment: z.boolean().default(false),
     commentType: z.enum(['comment', 'review']).default('comment'),
     reviewEvent: z.enum(['COMMENT', 'APPROVE', 'REQUEST_CHANGES']).default('COMMENT'),
+    useInlineComments: z.boolean().default(false),
+    inlineCommentStrategy: z.enum(['review_with_comments', 'individual_comments']).default('review_with_comments'),
   })
   .refine(
     (data: any) => {

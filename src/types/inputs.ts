@@ -49,6 +49,8 @@ export interface ActionInputs {
   postComment?: boolean | undefined;
   commentType?: 'comment' | 'review' | undefined;
   reviewEvent?: 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES' | undefined;
+  useInlineComments?: boolean | undefined;
+  inlineCommentStrategy?: 'review_with_comments' | 'individual_comments' | undefined;
 }
 
 export interface RepoInfo {

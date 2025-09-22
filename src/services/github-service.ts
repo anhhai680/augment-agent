@@ -4,6 +4,7 @@
 
 import { Octokit } from '@octokit/rest';
 import { PullRequestInfo, PullRequestFile, PullRequestDiff } from '../types/github.js';
+import { GitHubReviewComment } from '../types/review.js';
 import { TEMPLATE_CONFIG, ERROR } from '../config/constants.js';
 import { logger } from '../utils/logger.js';
 
@@ -184,6 +185,106 @@ export class GitHubService {
       logger.info(`Successfully created review on PR ${pullNumber}`);
     } catch (error) {
       logger.error(`${ERROR.GITHUB.API_ERROR}: Failed to create review on PR ${pullNumber}`, error);
+      throw error;
+    }
+  }
+
+  async createPullRequestReviewWithComments(
+    pullNumber: number, 
+    body: string, 
+    comments: GitHubReviewComment[] = [], 
+    event: 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES' = 'COMMENT',
+    commitId?: string
+  ): Promise<void> {
+    try {
+      logger.debug(`Creating review with ${comments.length} inline comments on PR ${pullNumber}`);
+
+      // Get the latest commit if not provided
+      if (!commitId) {
+        const prInfo = await this.getPullRequest(pullNumber);
+        commitId = prInfo.head.sha;
+      }
+
+      // Filter out comments without required fields and map to GitHub API format
+      const validComments = comments
+        .filter(comment => comment.line !== undefined && comment.path)
+        .map(comment => {
+          const mappedComment: any = {
+            path: comment.path,
+            body: comment.body,
+            line: comment.line!,
+            side: comment.side || 'RIGHT',
+          };
+          
+          if (comment.start_line !== undefined) {
+            mappedComment.start_line = comment.start_line;
+            mappedComment.start_side = comment.start_side || comment.side || 'RIGHT';
+          }
+          
+          return mappedComment;
+        });
+
+      await this.octokit.rest.pulls.createReview({
+        owner: this.owner,
+        repo: this.repo,
+        pull_number: pullNumber,
+        commit_id: commitId,
+        body,
+        event,
+        comments: validComments
+      });
+
+      logger.info(`Successfully created review with ${validComments.length} inline comments on PR ${pullNumber}`);
+    } catch (error) {
+      logger.error(`${ERROR.GITHUB.API_ERROR}: Failed to create review with comments on PR ${pullNumber}`, error);
+      throw error;
+    }
+  }
+
+  async createIndividualReviewComment(
+    pullNumber: number,
+    comment: GitHubReviewComment,
+    commitId?: string
+  ): Promise<void> {
+    try {
+      logger.debug(`Creating individual comment on ${comment.path}:${comment.line} for PR ${pullNumber}`);
+
+      // Validate required fields
+      if (!comment.line || !comment.path) {
+        logger.warning('Skipping comment with missing line or path', { 
+          path: comment.path, 
+          line: comment.line 
+        });
+        return;
+      }
+
+      // Get the latest commit if not provided
+      if (!commitId) {
+        const prInfo = await this.getPullRequest(pullNumber);
+        commitId = prInfo.head.sha;
+      }
+
+      const requestParams: any = {
+        owner: this.owner,
+        repo: this.repo,
+        pull_number: pullNumber,
+        commit_id: commitId,
+        path: comment.path,
+        body: comment.body,
+        line: comment.line,
+        side: comment.side || 'RIGHT',
+      };
+
+      if (comment.start_line !== undefined) {
+        requestParams.start_line = comment.start_line;
+        requestParams.start_side = comment.start_side || comment.side || 'RIGHT';
+      }
+
+      await this.octokit.rest.pulls.createReviewComment(requestParams);
+
+      logger.info(`Successfully created individual comment on ${comment.path}:${comment.line}`);
+    } catch (error) {
+      logger.error(`${ERROR.GITHUB.API_ERROR}: Failed to create individual comment on PR ${pullNumber}`, error);
       throw error;
     }
   }
