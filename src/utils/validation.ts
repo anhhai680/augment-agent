@@ -1,12 +1,12 @@
 /**
  * Input validation utilities
- * 
+ *
  * Security Note: API key format validation is intentionally minimal. We only validate
  * presence, not specific formats (prefixes, lengths, etc.) to avoid:
  * - False positives from legitimate keys that don't match expected patterns
  * - Security vulnerabilities from client-side format assumptions
  * - Maintenance overhead as providers change their key formats
- * 
+ *
  * Each LLM provider handles their own key format validation during API calls,
  * which is more secure and reliable than client-side checks.
  */
@@ -42,9 +42,21 @@ const ActionInputsSchema = z
     azureDevOpsOrganization: z.string().optional(),
     azureDevOpsProject: z.string().optional(),
     azureDevOpsRepository: z.string().optional(),
-    azureDevOpsPullRequestId: z.number().int().positive('Azure DevOps pull request ID must be a positive integer').optional(),
-    azureDevOpsWorkItemId: z.number().int().positive('Azure DevOps work item ID must be a positive integer').optional(),
-    azureDevOpsBuildId: z.number().int().positive('Azure DevOps build ID must be a positive integer').optional(),
+    azureDevOpsPullRequestId: z
+      .number()
+      .int()
+      .positive('Azure DevOps pull request ID must be a positive integer')
+      .optional(),
+    azureDevOpsWorkItemId: z
+      .number()
+      .int()
+      .positive('Azure DevOps work item ID must be a positive integer')
+      .optional(),
+    azureDevOpsBuildId: z
+      .number()
+      .int()
+      .positive('Azure DevOps build ID must be a positive integer')
+      .optional(),
     // LLM Provider fields
     llmProvider: z.enum(['auggie', 'openai', 'claude', 'google']).default('auggie'),
     llmApiKey: z.string().optional(),
@@ -57,7 +69,9 @@ const ActionInputsSchema = z
     commentType: z.enum(['comment', 'review']).default('comment'),
     reviewEvent: z.enum(['COMMENT', 'APPROVE', 'REQUEST_CHANGES']).default('COMMENT'),
     useInlineComments: z.boolean().default(false),
-    inlineCommentStrategy: z.enum(['review_with_comments', 'individual_comments']).default('review_with_comments'),
+    inlineCommentStrategy: z
+      .enum(['review_with_comments', 'individual_comments'])
+      .default('review_with_comments'),
   })
   .refine(
     (data: any) => {
@@ -167,19 +181,20 @@ const ActionInputsSchema = z
       if (data.llmProvider === 'auggie' && data.augmentApiUrl) {
         try {
           // More robust URL validation pattern that handles paths, query params, etc.
-          const urlPattern = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[-a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&=\/]*)$/;
+          const urlPattern =
+            /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[-a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&=\/]*)$/;
           const url = data.augmentApiUrl.trim();
-          
+
           // Check basic pattern and ensure it has a proper domain structure
           if (!urlPattern.test(url)) return false;
-          
+
           // Additional validation: ensure there's a domain with TLD after the protocol
           const urlParts = url.split('://');
           if (urlParts.length !== 2) return false;
-          
+
           const domainPart = urlParts[1].split('/')[0].split('?')[0]; // Extract domain part
           const domainParts = domainPart.split('.');
-          
+
           // Must have at least one dot in domain (e.g., example.com)
           return domainParts.length >= 2 && domainParts.every((part: string) => part.length > 0);
         } catch {
@@ -189,7 +204,8 @@ const ActionInputsSchema = z
       return true;
     },
     {
-      message: 'Augment API URL must be a valid HTTP(S) URL with a proper domain when using auggie LLM provider',
+      message:
+        'Augment API URL must be a valid HTTP(S) URL with a proper domain when using auggie LLM provider',
       path: ['augmentApiUrl'],
     }
   )
@@ -198,19 +214,20 @@ const ActionInputsSchema = z
       if (!data.llmBaseUrl) return true;
       try {
         // More robust URL validation pattern that handles paths, query params, etc.
-        const urlPattern = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[-a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&=\/]*)$/;
+        const urlPattern =
+          /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[-a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&=\/]*)$/;
         const url = data.llmBaseUrl.trim();
-        
+
         // Check basic pattern and ensure it has a proper domain structure
         if (!urlPattern.test(url)) return false;
-        
+
         // Additional validation: ensure there's a domain with TLD after the protocol
         const urlParts = url.split('://');
         if (urlParts.length !== 2) return false;
-        
+
         const domainPart = urlParts[1].split('/')[0].split('?')[0]; // Extract domain part
         const domainParts = domainPart.split('.');
-        
+
         // Must have at least one dot in domain (e.g., example.com)
         return domainParts.length >= 2 && domainParts.every((part: string) => part.length > 0);
       } catch {
@@ -226,16 +243,18 @@ const ActionInputsSchema = z
     (data: any) => {
       // If platform is azure-devops, validate Azure DevOps configuration
       if (data.platform === 'azure-devops') {
-        const hasAzureDevOpsConfig = data.azureDevOpsToken && 
-                                   data.azureDevOpsOrganization && 
-                                   data.azureDevOpsProject && 
-                                   data.azureDevOpsRepository;
+        const hasAzureDevOpsConfig =
+          data.azureDevOpsToken &&
+          data.azureDevOpsOrganization &&
+          data.azureDevOpsProject &&
+          data.azureDevOpsRepository;
         return hasAzureDevOpsConfig;
       }
       return true;
     },
     {
-      message: 'Azure DevOps platform requires azure_devops_token, azure_devops_organization, azure_devops_project, and azure_devops_repository',
+      message:
+        'Azure DevOps platform requires azure_devops_token, azure_devops_organization, azure_devops_project, and azure_devops_repository',
       path: ['platform'],
     }
   )
@@ -314,7 +333,9 @@ export class ValidationUtils {
       return validated;
     } catch (error: unknown) {
       if (error instanceof z.ZodError) {
-        const errorMessages = error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`);
+        const errorMessages = error.errors.map(
+          (err: any) => `${err.path.join('.')}: ${err.message}`
+        );
         const message = `${ERROR.INPUT.INVALID}: ${errorMessages.join(', ')}`;
         logger.error(message, error);
         throw new Error(message);

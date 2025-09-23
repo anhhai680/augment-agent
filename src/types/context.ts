@@ -33,7 +33,7 @@ export interface PRData {
 export interface TemplateContext {
   // Platform information
   platform: 'github';
-  
+
   // PR-related context (if PR info provided)
   pr?: PRData;
 

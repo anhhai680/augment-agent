@@ -33,7 +33,7 @@ export class CustomContextExtractor extends BaseExtractor<Record<string, any>> {
     if (!inputs.customContext || inputs.customContext.trim().length === 0) {
       throw new Error('Custom context is required and cannot be empty');
     }
-    
+
     const jsonString = inputs.customContext;
     try {
       const parsed = JSON.parse(jsonString);

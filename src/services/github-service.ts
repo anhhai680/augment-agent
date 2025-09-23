@@ -165,12 +165,19 @@ export class GitHubService {
 
       logger.info(`Successfully created comment on PR ${pullNumber}`);
     } catch (error) {
-      logger.error(`${ERROR.GITHUB.API_ERROR}: Failed to create comment on PR ${pullNumber}`, error);
+      logger.error(
+        `${ERROR.GITHUB.API_ERROR}: Failed to create comment on PR ${pullNumber}`,
+        error
+      );
       throw error;
     }
   }
 
-  async createPullRequestReview(pullNumber: number, body: string, event: 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES' = 'COMMENT'): Promise<void> {
+  async createPullRequestReview(
+    pullNumber: number,
+    body: string,
+    event: 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES' = 'COMMENT'
+  ): Promise<void> {
     try {
       logger.debug(`Creating review on PR ${pullNumber} with event: ${event}`);
 
@@ -190,9 +197,9 @@ export class GitHubService {
   }
 
   async createPullRequestReviewWithComments(
-    pullNumber: number, 
-    body: string, 
-    comments: GitHubReviewComment[] = [], 
+    pullNumber: number,
+    body: string,
+    comments: GitHubReviewComment[] = [],
     event: 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES' = 'COMMENT',
     commitId?: string
   ): Promise<void> {
@@ -214,36 +221,38 @@ export class GitHubService {
       // Get the actual diff to validate line numbers
       const diffData = await this.getPullRequestDiff(pullNumber);
       const validLines = this.extractValidLinesFromDiff(diffData.content);
-      logger.debug('Valid diff lines extracted:', { 
+      logger.debug('Valid diff lines extracted:', {
         fileCount: Object.keys(validLines).length,
-        files: Object.keys(validLines)
+        files: Object.keys(validLines),
       });
 
       // Filter out comments without required fields and validate against diff
       const validComments = comments
         .filter(comment => {
           if (!comment.line || !comment.path) {
-            logger.debug(`Filtering out comment: missing line (${comment.line}) or path (${comment.path})`);
+            logger.debug(
+              `Filtering out comment: missing line (${comment.line}) or path (${comment.path})`
+            );
             return false;
           }
           if (!validPaths.has(comment.path)) {
-            logger.warning(`File path "${comment.path}" not found in PR changes.`, { 
+            logger.warning(`File path "${comment.path}" not found in PR changes.`, {
               commentPath: comment.path,
-              availablePaths: Array.from(validPaths) 
+              availablePaths: Array.from(validPaths),
             });
             return false;
           }
-          
+
           // Check if the line number is valid in the diff
           const fileValidLines = validLines[comment.path];
           if (!fileValidLines || !fileValidLines.has(comment.line!)) {
             logger.warning(`Line ${comment.line} in "${comment.path}" is not part of the diff.`, {
               commentLine: comment.line,
-              validLines: fileValidLines ? Array.from(fileValidLines).slice(0, 10) : []
+              validLines: fileValidLines ? Array.from(fileValidLines).slice(0, 10) : [],
             });
             return false;
           }
-          
+
           return true;
         })
         .map(comment => {
@@ -253,17 +262,17 @@ export class GitHubService {
             line: comment.line!,
             side: comment.side || 'RIGHT',
           };
-          
+
           if (comment.start_line !== undefined) {
             mappedComment.start_line = comment.start_line;
             mappedComment.start_side = comment.start_side || comment.side || 'RIGHT';
           }
-          
+
           return mappedComment;
         });
 
       logger.info(`Filtered ${validComments.length} valid comments from ${comments.length} total`, {
-        validComments: validComments.map(c => ({ path: c.path, line: c.line }))
+        validComments: validComments.map(c => ({ path: c.path, line: c.line })),
       });
 
       if (validComments.length === 0) {
@@ -275,7 +284,7 @@ export class GitHubService {
           pull_number: pullNumber,
           commit_id: commitId,
           body: body || 'Code review completed',
-          event
+          event,
         });
         return;
       }
@@ -287,17 +296,19 @@ export class GitHubService {
         commit_id: commitId,
         body,
         event,
-        comments: validComments
+        comments: validComments,
       };
 
       logger.debug('Creating review with data:', reviewData);
 
       try {
         await this.octokit.rest.pulls.createReview(reviewData);
-        logger.info(`Successfully created review with ${validComments.length} inline comments on PR ${pullNumber}`);
+        logger.info(
+          `Successfully created review with ${validComments.length} inline comments on PR ${pullNumber}`
+        );
       } catch (apiError) {
         logger.error('GitHub API error when creating review with comments:', apiError);
-        
+
         // If the API call fails, try to create a regular review instead
         logger.info('Falling back to regular review due to API error');
         await this.octokit.rest.pulls.createReview({
@@ -306,14 +317,17 @@ export class GitHubService {
           pull_number: pullNumber,
           commit_id: commitId,
           body: `${body}\n\nNote: Attempted to post ${validComments.length} inline comments but encountered API issues.`,
-          event
+          event,
         });
-        
+
         // Re-throw the original error for debugging
         throw apiError;
       }
     } catch (error) {
-      logger.error(`${ERROR.GITHUB.API_ERROR}: Failed to create review with comments on PR ${pullNumber}`, error);
+      logger.error(
+        `${ERROR.GITHUB.API_ERROR}: Failed to create review with comments on PR ${pullNumber}`,
+        error
+      );
       throw error;
     }
   }
@@ -324,13 +338,15 @@ export class GitHubService {
     commitId?: string
   ): Promise<void> {
     try {
-      logger.debug(`Creating individual comment on ${comment.path}:${comment.line} for PR ${pullNumber}`);
+      logger.debug(
+        `Creating individual comment on ${comment.path}:${comment.line} for PR ${pullNumber}`
+      );
 
       // Validate required fields
       if (!comment.line || !comment.path) {
-        logger.warning('Skipping comment with missing line or path', { 
-          path: comment.path, 
-          line: comment.line 
+        logger.warning('Skipping comment with missing line or path', {
+          path: comment.path,
+          line: comment.line,
         });
         return;
       }
@@ -361,7 +377,10 @@ export class GitHubService {
 
       logger.info(`Successfully created individual comment on ${comment.path}:${comment.line}`);
     } catch (error) {
-      logger.error(`${ERROR.GITHUB.API_ERROR}: Failed to create individual comment on PR ${pullNumber}`, error);
+      logger.error(
+        `${ERROR.GITHUB.API_ERROR}: Failed to create individual comment on PR ${pullNumber}`,
+        error
+      );
       throw error;
     }
   }
@@ -372,23 +391,23 @@ export class GitHubService {
    */
   private extractValidLinesFromDiff(diffData: string): Record<string, Set<number>> {
     const validLines: Record<string, Set<number>> = {};
-    
+
     // Split diff into file sections
     const fileSections = diffData.split(/^diff --git /m).slice(1);
-    
+
     for (const section of fileSections) {
       const lines = section.split('\n');
-      
+
       // Extract file path from the first line
       const filePathMatch = lines[0]?.match(/a\/(.+?) b\/(.+)/);
       if (!filePathMatch || !filePathMatch[2]) continue;
-      
+
       const filePath = filePathMatch[2]; // Use the 'b/' path (destination)
       validLines[filePath] = new Set<number>();
-      
+
       let currentLine = 0;
       let inHunk = false;
-      
+
       for (const line of lines) {
         // Look for hunk headers like @@ -1,4 +1,6 @@
         const hunkMatch = line.match(/^@@ -\d+,?\d* \+(\d+),?\d* @@/);
@@ -397,9 +416,9 @@ export class GitHubService {
           inHunk = true;
           continue;
         }
-        
+
         if (!inHunk) continue;
-        
+
         // Process lines in the hunk
         if (line.startsWith('+')) {
           // Added line - valid for comments
@@ -422,7 +441,7 @@ export class GitHubService {
         }
       }
     }
-    
+
     return validLines;
   }
 }

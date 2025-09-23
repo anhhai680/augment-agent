@@ -18,33 +18,33 @@ export class AuggieProvider implements LLMProvider {
 
   async generateResponse(instruction: string, context?: any): Promise<LLMResponse> {
     try {
-      logger.debug('Generating response with Auggie', { 
+      logger.debug('Generating response with Auggie', {
         model: this.config.model,
-        instructionLength: instruction.length 
+        instructionLength: instruction.length,
       });
 
       // Create temporary instruction file
       const instructionFile = await this.createInstructionFile(instruction);
-      
+
       // Build auggie command arguments
       const args = ['--print'];
-      
+
       if (this.config.model) {
         args.push('--model', this.config.model);
       }
-      
+
       args.push('--instruction-file', instructionFile);
 
       // Execute auggie command
       const response = await this.executeAuggieCommand(args);
-      
+
       // Clean up temporary file
       await FileUtils.deleteFile(instructionFile);
 
       return {
         content: response,
         model: this.config.model || 'default',
-        finishReason: 'stop'
+        finishReason: 'stop',
       };
     } catch (error) {
       logger.error('Auggie provider failed to generate response', error);
@@ -60,7 +60,7 @@ export class AuggieProvider implements LLMProvider {
     try {
       // Execute auggie --list-models command
       const response = await this.executeAuggieCommand(['--list-models']);
-      
+
       // Parse the response to extract model names
       const models = response
         .split('\n')
@@ -97,21 +97,21 @@ export class AuggieProvider implements LLMProvider {
           AUGMENT_SESSION_AUTH: process.env.AUGMENT_SESSION_AUTH,
           AUGMENT_API_TOKEN: process.env.AUGMENT_API_TOKEN,
           AUGMENT_API_URL: process.env.AUGMENT_API_URL,
-        }
+        },
       });
 
       let stdout = '';
       let stderr = '';
 
-      child.stdout?.on('data', (data) => {
+      child.stdout?.on('data', data => {
         stdout += data.toString();
       });
 
-      child.stderr?.on('data', (data) => {
+      child.stderr?.on('data', data => {
         stderr += data.toString();
       });
 
-      child.on('close', (code) => {
+      child.on('close', code => {
         if (code === 0) {
           resolve(stdout.trim());
         } else {
@@ -121,7 +121,7 @@ export class AuggieProvider implements LLMProvider {
         }
       });
 
-      child.on('error', (error) => {
+      child.on('error', error => {
         logger.error('Auggie command error', error);
         reject(error);
       });

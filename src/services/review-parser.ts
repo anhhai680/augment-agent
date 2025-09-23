@@ -12,7 +12,7 @@ export class ReviewParser {
   static parseStructuredReview(content: string): StructuredReview | null {
     try {
       logger.debug('Attempting to parse structured JSON review');
-      
+
       // Try to find JSON in the content
       const jsonMatch = content.match(/```json\s*\n([\s\S]*?)\n\s*```/);
       let jsonString = jsonMatch ? jsonMatch[1] : content;
@@ -37,16 +37,15 @@ export class ReviewParser {
         return null;
       }
 
-      logger.debug('Attempting to parse JSON string', { 
+      logger.debug('Attempting to parse JSON string', {
         jsonLength: jsonString.length,
-        jsonPreview: jsonString.substring(0, 100) + '...'
+        jsonPreview: jsonString.substring(0, 100) + '...',
       });
 
       const parsed = JSON.parse(jsonString);
-      
+
       // Validate the structure - handle both nested and flat formats
       if (parsed && typeof parsed === 'object' && typeof parsed.summary === 'string') {
-        
         // Extract natural language summary from content if available
         let naturalLanguageSummary = parsed.summary;
         if (jsonMatch) {
@@ -58,66 +57,68 @@ export class ReviewParser {
             logger.debug('Using natural language content as summary instead of JSON summary');
           }
         }
-        
+
         // Check if it's the nested format with files
         if (parsed.files && typeof parsed.files === 'object') {
           logger.info('Successfully validated structured review format (nested)');
           logger.debug('Parsed review structure:', {
             summary: naturalLanguageSummary.substring(0, 100) + '...',
             fileCount: Object.keys(parsed.files).length,
-            files: Object.keys(parsed.files)
+            files: Object.keys(parsed.files),
           });
           return {
             ...parsed,
-            summary: naturalLanguageSummary
+            summary: naturalLanguageSummary,
           } as StructuredReview;
         }
-        
+
         // Check if it's the flat format with line_comments array
         if (parsed.line_comments && Array.isArray(parsed.line_comments)) {
-          logger.info('Successfully validated structured review format (flat) - converting to nested');
-          
+          logger.info(
+            'Successfully validated structured review format (flat) - converting to nested'
+          );
+
           // Convert flat format to nested format
           const nestedFormat: StructuredReview = {
             summary: naturalLanguageSummary,
-            files: {}
+            files: {},
           };
-          
+
           // Group line comments by file
           for (const comment of parsed.line_comments) {
             if (comment.file && comment.line && comment.comment) {
               const filePath = comment.file;
-              
+
               if (!nestedFormat.files[filePath]) {
                 nestedFormat.files[filePath] = {
                   line_comments: [],
-                  general_comments: []
+                  general_comments: [],
                 };
               }
-              
+
               nestedFormat.files[filePath].line_comments.push({
                 line: comment.line,
                 comment: comment.comment,
-                side: comment.side || 'RIGHT'
+                side: comment.side || 'RIGHT',
               });
             }
           }
-          
+
           logger.debug('Converted flat format to nested:', {
             summary: naturalLanguageSummary.substring(0, 100) + '...',
             fileCount: Object.keys(nestedFormat.files).length,
-            files: Object.keys(nestedFormat.files)
+            files: Object.keys(nestedFormat.files),
           });
-          
+
           return nestedFormat;
         }
       }
-      
+
       logger.debug('JSON parsed but structure validation failed');
       return null;
     } catch (error) {
       logger.debug('Failed to parse as structured JSON review', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       return null;
     }
@@ -132,26 +133,30 @@ export class ReviewParser {
 
     // Split content into sections
     const sections = content.split(/(?=^##?\s)/m);
-    
+
     for (const section of sections) {
       const lines = section.split('\n');
       const header = lines[0]?.trim();
-      
+
       if (!header) continue;
 
       // Check if this is a file-specific section
-      const fileMatch = header.match(/^##?\s*(?:File:?\s*)?([^\s]+\.(ts|js|tsx|jsx|py|java|c|cpp|cs|go|rb|php|swift|kt|rs|dart|scala|clj|elm|hs|ml|fs|vb|pas|asm|sh|bat|ps1|yaml|yml|json|xml|html|css|scss|sass|less|md|txt|sql|r|mat|ipynb|vue|svelte|astro)(?:\s|$))/i);
-      
+      const fileMatch = header.match(
+        /^##?\s*(?:File:?\s*)?([^\s]+\.(ts|js|tsx|jsx|py|java|c|cpp|cs|go|rb|php|swift|kt|rs|dart|scala|clj|elm|hs|ml|fs|vb|pas|asm|sh|bat|ps1|yaml|yml|json|xml|html|css|scss|sass|less|md|txt|sql|r|mat|ipynb|vue|svelte|astro)(?:\s|$))/i
+      );
+
       if (fileMatch && fileMatch[1]) {
         const filePath: string = fileMatch[1];
-        const fileContentLines = lines.slice(1).filter((line): line is string => typeof line === 'string');
+        const fileContentLines = lines
+          .slice(1)
+          .filter((line): line is string => typeof line === 'string');
         const fileContent: string = fileContentLines.join('\n');
-        
+
         if (fileContent.trim().length > 0) {
           // Look for line-specific comments in the format "Line X:" or "Lines X-Y:"
           const lineComments = ReviewParser.extractLineComments(fileContent, filePath);
           comments.push(...lineComments);
-          
+
           // Look for general file comments (content that doesn't match line patterns)
           const generalComment = ReviewParser.extractGeneralFileComment(fileContent, filePath);
           if (generalComment) {
@@ -178,7 +183,7 @@ export class ReviewParser {
     return {
       summary: summary || 'Code review completed',
       comments,
-      hasInlineComments: comments.length > 0
+      hasInlineComments: comments.length > 0,
     };
   }
 
@@ -191,17 +196,17 @@ export class ReviewParser {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      
+
       if (!line) continue;
-      
+
       // Match patterns like "Line 42:", "Lines 42-45:", "L42:", etc.
       const lineMatch = line.match(/^(?:Lines?\s*|L)(\d+)(?:-(\d+))?:\s*(.+)/i);
-      
+
       if (lineMatch && lineMatch[1] && lineMatch[3]) {
         const startLine = parseInt(lineMatch[1], 10);
         const endLine = lineMatch[2] ? parseInt(lineMatch[2], 10) : undefined;
         let comment = lineMatch[3];
-        
+
         // Include following lines that are part of the comment (not starting with Line/L pattern)
         let j = i + 1;
         while (j < lines.length) {
@@ -214,20 +219,20 @@ export class ReviewParser {
           }
           j++;
         }
-        
+
         const reviewComment: GitHubReviewComment = {
           path: filePath,
           body: comment.trim(),
           line: endLine || startLine,
-          side: 'RIGHT'
+          side: 'RIGHT',
         };
-        
+
         if (endLine) {
           reviewComment.start_line = startLine;
         }
-        
+
         comments.push(reviewComment);
-        
+
         i = j - 1; // Skip the lines we've processed
       }
     }
@@ -238,7 +243,10 @@ export class ReviewParser {
   /**
    * Extracts general file comment (content not matching line patterns)
    */
-  private static extractGeneralFileComment(content: string, filePath: string): GitHubReviewComment | null {
+  private static extractGeneralFileComment(
+    content: string,
+    filePath: string
+  ): GitHubReviewComment | null {
     const lines = content.split('\n');
     const generalLines: string[] = [];
 
@@ -250,14 +258,14 @@ export class ReviewParser {
     }
 
     const generalContent = generalLines.join('\n').trim();
-    
+
     if (generalContent && generalContent.length > 10) {
       return {
         path: filePath,
         body: `**General feedback for this file:**\n\n${generalContent}`,
         // For general file comments, we'll comment on line 1 as a file-level comment
         line: 1,
-        side: 'RIGHT'
+        side: 'RIGHT',
       };
     }
 
@@ -269,14 +277,14 @@ export class ReviewParser {
    */
   static parseReview(content: string): ParsedReview {
     logger.info('Starting review parsing process');
-    logger.debug('Review content preview:', { 
+    logger.debug('Review content preview:', {
       contentLength: content.length,
-      contentPreview: content.substring(0, 200) + '...' 
+      contentPreview: content.substring(0, 200) + '...',
     });
 
     // First try to parse as structured JSON
     const structured = this.parseStructuredReview(content);
-    
+
     if (structured) {
       logger.info('Successfully parsed structured JSON review');
       const parsed = this.convertStructuredToParsed(structured);
@@ -298,11 +306,11 @@ export class ReviewParser {
     const comments: GitHubReviewComment[] = [];
 
     logger.debug('Converting structured review to parsed format');
-    
+
     for (const [filePath, fileReview] of Object.entries(structured.files)) {
       logger.debug(`Processing file: ${filePath}`, {
         lineComments: fileReview.line_comments.length,
-        generalComments: fileReview.general_comments.length
+        generalComments: fileReview.general_comments.length,
       });
 
       // Add line-specific comments
@@ -311,13 +319,13 @@ export class ReviewParser {
           path: filePath,
           body: lineComment.comment,
           line: lineComment.line,
-          side: lineComment.side || 'RIGHT'
+          side: lineComment.side || 'RIGHT',
         };
-        
+
         if (lineComment.startLine !== undefined) {
           reviewComment.start_line = lineComment.startLine;
         }
-        
+
         comments.push(reviewComment);
       }
 
@@ -328,7 +336,7 @@ export class ReviewParser {
           path: filePath,
           body: `**General feedback for this file:**\n\n${generalComment}`,
           line: 1,
-          side: 'RIGHT'
+          side: 'RIGHT',
         });
       }
     }
@@ -338,7 +346,7 @@ export class ReviewParser {
     return {
       summary: structured.summary,
       comments,
-      hasInlineComments: comments.length > 0
+      hasInlineComments: comments.length > 0,
     };
   }
 }

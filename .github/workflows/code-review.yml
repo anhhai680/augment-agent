@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Create instruction file
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -26,10 +26,10 @@ jobs:
         run: |
           # Get the list of changed files for the LLM to reference
           CHANGED_FILES=$(gh pr diff $PR_NUMBER --name-only)
-          
+
           # Get the actual diff content with line numbers (limit size to avoid token limits)
           PR_DIFF=$(gh pr diff $PR_NUMBER | head -2000)
-          
+
           # Check if diff was truncated
           FULL_DIFF_LINES=$(gh pr diff $PR_NUMBER | wc -l)
           if [ $FULL_DIFF_LINES -gt 2000 ]; then
@@ -38,11 +38,11 @@ jobs:
           else
             DIFF_TRUNCATED="false"
           fi
-          
+
           # Read the template from the external file and substitute variables
           # Use environment variables for substitution to handle special characters properly
           export PR_NUMBER REPOSITORY BASE_BRANCH HEAD_BRANCH DIFF_TRUNCATED CHANGED_FILES PR_DIFF
-          
+
           # Use envsubst for safer variable substitution
           cat src/prompts/code-review-instructions.md | envsubst > /tmp/code-review-instruction.txt
 

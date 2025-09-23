@@ -20,15 +20,17 @@ export class ContextBuilder {
   static create(inputs: ActionInputs): ContextBuilder {
     const prExtractor = PRExtractor.create(inputs);
     const customContextExtractor = CustomContextExtractor.create(inputs);
-    
+
     // Create Azure DevOps extractor only if platform is explicitly set to azure-devops
     // and all required Azure DevOps configuration is present
     let azureDevOpsExtractor: AzureDevOpsContextExtractor | undefined;
-    if (inputs.platform === 'azure-devops' && 
-        inputs.azureDevOpsToken && 
-        inputs.azureDevOpsOrganization && 
-        inputs.azureDevOpsProject && 
-        inputs.azureDevOpsRepository) {
+    if (
+      inputs.platform === 'azure-devops' &&
+      inputs.azureDevOpsToken &&
+      inputs.azureDevOpsOrganization &&
+      inputs.azureDevOpsProject &&
+      inputs.azureDevOpsRepository
+    ) {
       try {
         azureDevOpsExtractor = new AzureDevOpsContextExtractor(inputs);
         logger.info('Azure DevOps context extractor created successfully');

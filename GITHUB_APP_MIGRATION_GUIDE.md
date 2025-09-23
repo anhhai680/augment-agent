@@ -5,6 +5,7 @@ This guide provides a comprehensive roadmap for converting the current Augment A
 ## Overview
 
 ### Current Architecture (GitHub Action)
+
 - **Trigger**: Manual workflow runs on PR events
 - **Authentication**: User-provided `GITHUB_TOKEN` and `AUGMENT_SESSION_AUTH`
 - **Installation**: Users copy workflow files to `.github/workflows/`
@@ -12,6 +13,7 @@ This guide provides a comprehensive roadmap for converting the current Augment A
 - **Configuration**: Through workflow YAML files and repository secrets
 
 ### Target Architecture (GitHub App)
+
 - **Trigger**: Automatic webhook events (PR opened, synchronized, etc.)
 - **Authentication**: App installation tokens with granular permissions
 - **Installation**: One-click installation from GitHub Marketplace
@@ -20,21 +22,22 @@ This guide provides a comprehensive roadmap for converting the current Augment A
 
 ## Key Differences and Benefits
 
-| Aspect | GitHub Action | GitHub App |
-|--------|---------------|------------|
-| **Installation** | Manual workflow setup | One-click marketplace install |
-| **Authentication** | User tokens | App installation tokens |
-| **Permissions** | Broad repository access | Granular, specific permissions |
-| **Scalability** | Per-repository setup | Cross-repository, organization-wide |
-| **User Experience** | Technical setup required | User-friendly installation |
-| **Security** | User-managed secrets | App-managed authentication |
-| **Billing** | Free (uses Actions minutes) | Can implement usage-based pricing |
+| Aspect              | GitHub Action               | GitHub App                          |
+| ------------------- | --------------------------- | ----------------------------------- |
+| **Installation**    | Manual workflow setup       | One-click marketplace install       |
+| **Authentication**  | User tokens                 | App installation tokens             |
+| **Permissions**     | Broad repository access     | Granular, specific permissions      |
+| **Scalability**     | Per-repository setup        | Cross-repository, organization-wide |
+| **User Experience** | Technical setup required    | User-friendly installation          |
+| **Security**        | User-managed secrets        | App-managed authentication          |
+| **Billing**         | Free (uses Actions minutes) | Can implement usage-based pricing   |
 
 ## Required Changes
 
 ### 1. Infrastructure Changes
 
 #### A. Web Server Implementation
+
 Create a web server to handle GitHub webhooks and serve the app interface.
 
 ```typescript
@@ -61,6 +64,7 @@ export { app };
 ```
 
 #### B. GitHub App Configuration
+
 Replace the current GitHub Action setup with Probot-based GitHub App handling:
 
 ```typescript
@@ -70,34 +74,33 @@ import { AugmentAgentService } from '../services/augment-agent-service.js';
 
 export const augmentAgentApp = (app: Probot) => {
   // Handle pull request events
-  app.on(['pull_request.opened', 'pull_request.synchronize'], async (context) => {
+  app.on(['pull_request.opened', 'pull_request.synchronize'], async context => {
     const { pull_request, repository } = context.payload;
-    
+
     try {
       // Get installation-specific configuration
       const config = await getRepositoryConfig(context);
-      
+
       // Initialize the Augment Agent service
       const agentService = new AugmentAgentService({
         installation: context.payload.installation,
         repository: repository.full_name,
         pullRequest: pull_request,
-        config
+        config,
       });
-      
+
       // Process the pull request
       await agentService.processPullRequest();
-      
     } catch (error) {
       context.log.error('Failed to process pull request', error);
     }
   });
 
   // Handle installation events
-  app.on('installation.created', async (context) => {
+  app.on('installation.created', async context => {
     const { installation } = context.payload;
     context.log.info(`App installed for: ${installation.account.login}`);
-    
+
     // Initialize default configuration for the installation
     await initializeInstallationConfig(context);
   });
@@ -109,24 +112,26 @@ export const augmentAgentApp = (app: Probot) => {
 #### A. Replace User Tokens with Installation Tokens
 
 **Current (GitHub Action):**
+
 ```typescript
 // Uses user-provided GITHUB_TOKEN
 const octokit = new Octokit({ auth: config.token });
 ```
 
 **New (GitHub App):**
+
 ```typescript
 // Uses installation token with specific permissions
 export class GitHubAppService {
   private app: App;
-  
+
   constructor(appId: string, privateKey: string) {
     this.app = new App({
       appId,
       privateKey,
     });
   }
-  
+
   async getInstallationOctokit(installationId: number) {
     return await this.app.getInstallationOctokit(installationId);
   }
@@ -134,26 +139,32 @@ export class GitHubAppService {
 ```
 
 #### B. Augment Authentication Management
+
 Create a secure service for managing Augment API credentials:
 
 ```typescript
 // src/services/credential-service.ts
 export class CredentialService {
   private encryptionKey: string;
-  
+
   constructor(encryptionKey: string) {
     this.encryptionKey = encryptionKey;
   }
-  
-  async storeAugmentCredentials(installationId: number, credentials: AugmentCredentials) {
+
+  async storeAugmentCredentials(
+    installationId: number,
+    credentials: AugmentCredentials
+  ) {
     const encrypted = encrypt(JSON.stringify(credentials), this.encryptionKey);
     await this.database.storeCredentials(installationId, encrypted);
   }
-  
-  async getAugmentCredentials(installationId: number): Promise<AugmentCredentials | null> {
+
+  async getAugmentCredentials(
+    installationId: number
+  ): Promise<AugmentCredentials | null> {
     const encrypted = await this.database.getCredentials(installationId);
     if (!encrypted) return null;
-    
+
     const decrypted = decrypt(encrypted, this.encryptionKey);
     return JSON.parse(decrypted);
   }
@@ -163,6 +174,7 @@ export class CredentialService {
 ### 3. Configuration Management
 
 #### A. Web-based Configuration Interface
+
 Create a configuration interface for users to set up their preferences:
 
 ```typescript
@@ -175,11 +187,11 @@ const router = express.Router();
 router.get('/config/:installationId', async (req, res) => {
   const { installationId } = req.params;
   const config = await getInstallationConfig(installationId);
-  
+
   res.render('config', {
     installationId,
     config,
-    llmProviders: ['auggie', 'openai', 'claude', 'google']
+    llmProviders: ['auggie', 'openai', 'claude', 'google'],
   });
 });
 
@@ -187,7 +199,7 @@ router.get('/config/:installationId', async (req, res) => {
 router.post('/config/:installationId', async (req, res) => {
   const { installationId } = req.params;
   const config = req.body;
-  
+
   await saveInstallationConfig(installationId, config);
   res.redirect(`/config/${installationId}?saved=true`);
 });
@@ -196,6 +208,7 @@ export { router as configRoutes };
 ```
 
 #### B. Repository-level Configuration
+
 Support `.augment.yml` configuration files in repositories:
 
 ```yaml
@@ -210,8 +223,8 @@ llm:
   model: gpt-4
   temperature: 0.7
 templates:
-  default: "code-review"
-  custom_templates_dir: ".augment/templates"
+  default: 'code-review'
+  custom_templates_dir: '.augment/templates'
 review:
   auto_comment: true
   request_changes: false
@@ -221,6 +234,7 @@ review:
 ### 4. Database and State Management
 
 #### A. Database Schema
+
 ```sql
 -- Installation configurations
 CREATE TABLE installations (
@@ -271,6 +285,7 @@ CREATE TABLE processing_logs (
 ### 5. Deployment Architecture
 
 #### A. Container Setup
+
 ```dockerfile
 # Dockerfile
 FROM node:22-alpine
@@ -295,6 +310,7 @@ CMD ["bun", "run", "start"]
 ```
 
 #### B. Kubernetes Deployment
+
 ```yaml
 # k8s/deployment.yaml
 apiVersion: apps/v1
@@ -312,36 +328,36 @@ spec:
         app: augment-agent-app
     spec:
       containers:
-      - name: app
-        image: augmentcode/augment-agent-app:latest
-        ports:
-        - containerPort: 3000
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: database-url
-        - name: GITHUB_APP_ID
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: github-app-id
-        - name: GITHUB_PRIVATE_KEY
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: github-private-key
-        - name: WEBHOOK_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: webhook-secret
-        - name: ENCRYPTION_KEY
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: encryption-key
+        - name: app
+          image: augmentcode/augment-agent-app:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: database-url
+            - name: GITHUB_APP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: github-app-id
+            - name: GITHUB_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: github-private-key
+            - name: WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: webhook-secret
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: encryption-key
 ```
 
 ## Migration Steps
@@ -419,15 +435,18 @@ spec:
 The GitHub App will need the following permissions:
 
 ### Repository Permissions
+
 - **Contents**: Read (to access repository files and configuration)
 - **Pull requests**: Read & Write (to read PR details and post comments)
 - **Issues**: Read & Write (if supporting issue analysis)
 - **Metadata**: Read (to access repository metadata)
 
 ### Organization Permissions
+
 - **Members**: Read (if providing organization-wide analytics)
 
 ### Subscription Events
+
 - **Pull request**: opened, synchronize, closed
 - **Installation**: created, deleted
 - **Installation repositories**: added, removed
@@ -435,18 +454,21 @@ The GitHub App will need the following permissions:
 ## Security Considerations
 
 ### 1. Credential Management
+
 - **Encrypt all stored credentials** using industry-standard encryption
 - **Rotate encryption keys** regularly
 - **Use separate encryption keys** per environment
 - **Implement credential expiration** and refresh mechanisms
 
 ### 2. Access Control
+
 - **Validate webhook signatures** to ensure requests come from GitHub
 - **Implement rate limiting** to prevent abuse
 - **Log all access** for audit trails
 - **Use principle of least privilege** for all permissions
 
 ### 3. Data Privacy
+
 - **Minimize data collection** to only what's necessary
 - **Implement data retention policies** with automatic cleanup
 - **Provide data export/deletion** capabilities for users
@@ -455,41 +477,46 @@ The GitHub App will need the following permissions:
 ## Cost Considerations
 
 ### Infrastructure Costs
+
 - **Web servers**: $50-200/month depending on scale
 - **Database**: $20-100/month for PostgreSQL hosting
 - **CDN and load balancing**: $20-50/month
 - **Monitoring and logging**: $30-100/month
 
 ### Development Costs
+
 - **Initial development**: 6-8 weeks of development time
 - **Ongoing maintenance**: 20-30% of initial development time annually
 - **Security audits**: $5,000-15,000 annually
 
 ### Revenue Opportunities
+
 - **Freemium model**: Free tier with basic features, paid tiers for advanced features
 - **Usage-based pricing**: Charge per API call or processing minute
 - **Enterprise licenses**: Custom pricing for large organizations
 
 ## Migration Timeline
 
-| Phase | Duration | Key Deliverables | Success Criteria |
-|-------|----------|------------------|------------------|
-| **Phase 1** | 2 weeks | Core infrastructure | Server responds to webhooks |
-| **Phase 2** | 2 weeks | Core functionality | Can process PRs and generate reviews |
-| **Phase 3** | 2 weeks | User experience | Web interface functional |
-| **Phase 4** | 2 weeks | Security & launch | Ready for production deployment |
+| Phase       | Duration | Key Deliverables    | Success Criteria                     |
+| ----------- | -------- | ------------------- | ------------------------------------ |
+| **Phase 1** | 2 weeks  | Core infrastructure | Server responds to webhooks          |
+| **Phase 2** | 2 weeks  | Core functionality  | Can process PRs and generate reviews |
+| **Phase 3** | 2 weeks  | User experience     | Web interface functional             |
+| **Phase 4** | 2 weeks  | Security & launch   | Ready for production deployment      |
 
 **Total estimated timeline**: 8 weeks for MVP, additional 4-6 weeks for marketplace approval and launch.
 
 ## Success Metrics
 
 ### Technical Metrics
+
 - **Response time**: < 2 seconds for webhook processing
 - **Uptime**: > 99.9% availability
 - **Error rate**: < 1% of requests fail
 - **Scalability**: Handle 1000+ installations
 
 ### Business Metrics
+
 - **Installation rate**: Track new installations per week
 - **User engagement**: Active installations and usage patterns
 - **Customer satisfaction**: NPS score > 50

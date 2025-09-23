@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Create instruction file
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}

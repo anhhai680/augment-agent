@@ -3,7 +3,11 @@
  */
 
 import { AzureDevOpsService } from '../../services/azure-devops-service.js';
-import { AzureDevOpsPRData, AzureDevOpsWorkItemData, AzureDevOpsBuildData } from '../../types/azure-devops-context.js';
+import {
+  AzureDevOpsPRData,
+  AzureDevOpsWorkItemData,
+  AzureDevOpsBuildData,
+} from '../../types/azure-devops-context.js';
 import { AzureDevOpsPullRequestDiff } from '../../types/azure-devops.js';
 import { FileUtils } from '../../utils/file-utils.js';
 import { logger } from '../../utils/logger.js';
@@ -19,9 +23,16 @@ export class AzureDevOpsContextExtractor extends BaseExtractor<any> {
 
   constructor(inputs: ActionInputs) {
     super('Azure DevOps Context');
-    
-    if (!inputs.azureDevOpsToken || !inputs.azureDevOpsOrganization || !inputs.azureDevOpsProject || !inputs.azureDevOpsRepository) {
-      throw new Error('Azure DevOps configuration is incomplete. Required: token, organization, project, repository');
+
+    if (
+      !inputs.azureDevOpsToken ||
+      !inputs.azureDevOpsOrganization ||
+      !inputs.azureDevOpsProject ||
+      !inputs.azureDevOpsRepository
+    ) {
+      throw new Error(
+        'Azure DevOps configuration is incomplete. Required: token, organization, project, repository'
+      );
     }
 
     this.organization = inputs.azureDevOpsOrganization;
@@ -37,10 +48,13 @@ export class AzureDevOpsContextExtractor extends BaseExtractor<any> {
   }
 
   shouldExtract(inputs: ActionInputs): boolean {
-    return inputs.platform === 'azure-devops' && !!(
-      inputs.azureDevOpsPullRequestId || 
-      inputs.azureDevOpsWorkItemId || 
-      inputs.azureDevOpsBuildId
+    return (
+      inputs.platform === 'azure-devops' &&
+      !!(
+        inputs.azureDevOpsPullRequestId ||
+        inputs.azureDevOpsWorkItemId ||
+        inputs.azureDevOpsBuildId
+      )
     );
   }
 
@@ -218,24 +232,27 @@ export class AzureDevOpsContextExtractor extends BaseExtractor<any> {
 
   /**
    * Writes a comprehensive diff file with actual line-by-line changes.
-   * 
+   *
    * CRITICAL FIX: The original implementation only used Azure DevOps /diffs API endpoint
    * which returns metadata (file paths, change types) but no actual diff content.
    * This new implementation:
-   * 
+   *
    * 1. Uses Azure DevOps file content API to retrieve actual file content at different commits
    * 2. Generates proper unified diff format with actual line changes (@@ hunks, +/- lines)
    * 3. Provides fallback to metadata-only diff if detailed diff generation fails
    * 4. Handles edge cases like binary files, large files, and missing content
-   * 
+   *
    * The resulting diff file now contains actual code changes that can be analyzed
    * by templates, instead of just empty headers.
    */
-  private async writeDiffFile(diff: AzureDevOpsPullRequestDiff, pullRequestId: number): Promise<string> {
+  private async writeDiffFile(
+    diff: AzureDevOpsPullRequestDiff,
+    pullRequestId: number
+  ): Promise<string> {
     try {
       // Use the new detailed diff method to get actual line-by-line changes
       const detailedDiff = await this.azureDevOpsService.getDetailedPullRequestDiff(pullRequestId);
-      
+
       if (!detailedDiff || detailedDiff.trim().length === 0) {
         logger.warning('No detailed diff content available, falling back to metadata-only diff');
         return this.writeFallbackDiffFile(diff);
@@ -247,12 +264,17 @@ export class AzureDevOpsContextExtractor extends BaseExtractor<any> {
       logger.info('Azure DevOps detailed diff file written successfully', {
         filePath: diffFilePath,
         contentLength: detailedDiff.length,
-        hasLineChanges: detailedDiff.includes('@@ -') && (detailedDiff.includes('+') || detailedDiff.includes('-'))
+        hasLineChanges:
+          detailedDiff.includes('@@ -') &&
+          (detailedDiff.includes('+') || detailedDiff.includes('-')),
       });
 
       return diffFilePath;
     } catch (error) {
-      logger.error('Failed to write detailed Azure DevOps diff file, falling back to basic diff', error);
+      logger.error(
+        'Failed to write detailed Azure DevOps diff file, falling back to basic diff',
+        error
+      );
       // Fallback to the original method if detailed diff fails
       return this.writeFallbackDiffFile(diff);
     }
@@ -263,12 +285,12 @@ export class AzureDevOpsContextExtractor extends BaseExtractor<any> {
       // Convert Azure DevOps diff format to standard patch format (headers only)
       // This is the original implementation that only includes file headers
       let patchContent = '';
-      
+
       if (diff.changes) {
         for (const change of diff.changes) {
           const changeType = change.changeType;
           const path = change.item.path;
-          
+
           switch (changeType) {
             case 'add':
               patchContent += `diff --git a/${path} b/${path}\n`;
@@ -302,20 +324,24 @@ export class AzureDevOpsContextExtractor extends BaseExtractor<any> {
       }
 
       // Add a warning comment at the top
-      const warningHeader = `# WARNING: This diff file contains limited information\n` +
-                          `# Azure DevOps /diffs API only provides file metadata, not actual line changes\n` +
-                          `# For complete diff analysis, consider using Azure DevOps web interface\n` +
-                          `# or implement file content comparison using Git APIs\n\n`;
-      
+      const warningHeader =
+        `# WARNING: This diff file contains limited information\n` +
+        `# Azure DevOps /diffs API only provides file metadata, not actual line changes\n` +
+        `# For complete diff analysis, consider using Azure DevOps web interface\n` +
+        `# or implement file content comparison using Git APIs\n\n`;
+
       patchContent = warningHeader + patchContent;
 
-      const diffFilePath = PATHS.INSTRUCTION_FILE.replace('.txt', '-azure-devops-diff-fallback.patch');
+      const diffFilePath = PATHS.INSTRUCTION_FILE.replace(
+        '.txt',
+        '-azure-devops-diff-fallback.patch'
+      );
       await FileUtils.writeFile(diffFilePath, patchContent);
 
       logger.warning('Azure DevOps fallback diff file written (metadata only)', {
         filePath: diffFilePath,
         contentLength: patchContent.length,
-        changesCount: diff.changes?.length || 0
+        changesCount: diff.changes?.length || 0,
       });
 
       return diffFilePath;

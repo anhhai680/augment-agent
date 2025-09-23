@@ -17,10 +17,10 @@ export class ClaudeProvider implements LLMProvider {
 
   async generateResponse(instruction: string, context?: any): Promise<LLMResponse> {
     try {
-      logger.debug('Generating response with Claude', { 
+      logger.debug('Generating response with Claude', {
         model: this.config.model,
         baseUrl: this.baseUrl,
-        instructionLength: instruction.length 
+        instructionLength: instruction.length,
       });
 
       const response = await this.makeRequest({
@@ -30,20 +30,22 @@ export class ClaudeProvider implements LLMProvider {
         messages: [
           {
             role: 'user',
-            content: instruction
-          }
-        ]
+            content: instruction,
+          },
+        ],
       });
 
       return {
         content: response.content[0]?.text || '',
-        usage: response.usage ? {
-          promptTokens: response.usage.input_tokens,
-          completionTokens: response.usage.output_tokens,
-          totalTokens: response.usage.input_tokens + response.usage.output_tokens
-        } : undefined,
+        usage: response.usage
+          ? {
+              promptTokens: response.usage.input_tokens,
+              completionTokens: response.usage.output_tokens,
+              totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+            }
+          : undefined,
         model: response.model,
-        finishReason: response.stop_reason
+        finishReason: response.stop_reason,
       };
     } catch (error) {
       logger.error('Claude provider failed to generate response', error);
@@ -63,7 +65,7 @@ export class ClaudeProvider implements LLMProvider {
       'claude-3-haiku-20240307',
       'claude-2.1',
       'claude-2.0',
-      'claude-instant-1.2'
+      'claude-instant-1.2',
     ];
   }
 
@@ -71,10 +73,14 @@ export class ClaudeProvider implements LLMProvider {
     return !!(this.config.apiKey && this.config.apiKey.startsWith('sk-ant-'));
   }
 
-  private async makeRequest(endpoint: string | object, method: 'GET' | 'POST' = 'POST'): Promise<any> {
-    const url = typeof endpoint === 'string' 
-      ? `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
-      : `${this.baseUrl}/messages`;
+  private async makeRequest(
+    endpoint: string | object,
+    method: 'GET' | 'POST' = 'POST'
+  ): Promise<any> {
+    const url =
+      typeof endpoint === 'string'
+        ? `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
+        : `${this.baseUrl}/messages`;
 
     const body = typeof endpoint === 'object' ? JSON.stringify(endpoint) : undefined;
 
@@ -84,15 +90,17 @@ export class ClaudeProvider implements LLMProvider {
         'x-api-key': this.config.apiKey,
         'Content-Type': 'application/json',
         'anthropic-version': '2023-06-01',
-        'User-Agent': 'augment-agent/1.0'
+        'User-Agent': 'augment-agent/1.0',
       },
       body,
-      signal: this.config.timeout ? AbortSignal.timeout(this.config.timeout) : undefined
+      signal: this.config.timeout ? AbortSignal.timeout(this.config.timeout) : undefined,
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(`Claude API request failed: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+      throw new Error(
+        `Claude API request failed: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`
+      );
     }
 
     return await response.json();

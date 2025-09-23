@@ -16,6 +16,7 @@ The Augment Agent now supports both GitHub and Azure DevOps platforms. You can u
 ### 1. Azure DevOps Personal Access Token (PAT)
 
 Create a PAT with the following scopes:
+
 - `Code (read)` - Access to repositories and pull requests
 - `Work Items (read)` - Access to work items
 - `Build (read)` - Access to build information
@@ -26,17 +27,17 @@ Configure the following secrets and variables in your GitHub repository:
 
 **Secrets** (sensitive data):
 
-| Secret Name | Description | Example |
-|-------------|-------------|---------|
+| Secret Name          | Description           | Example     |
+| -------------------- | --------------------- | ----------- |
 | `AZURE_DEVOPS_TOKEN` | Your Azure DevOps PAT | `abc123...` |
 
 **Repository Variables** (non-sensitive configuration):
 
-| Variable Name | Description | Example |
-|---------------|-------------|---------|
-| `AZURE_DEVOPS_ORGANIZATION` | Azure DevOps organization name | `my-org` |
-| `AZURE_DEVOPS_PROJECT` | Azure DevOps project name | `my-project` |
-| `AZURE_DEVOPS_REPOSITORY` | Azure DevOps repository name | `my-repo` |
+| Variable Name               | Description                    | Example      |
+| --------------------------- | ------------------------------ | ------------ |
+| `AZURE_DEVOPS_ORGANIZATION` | Azure DevOps organization name | `my-org`     |
+| `AZURE_DEVOPS_PROJECT`      | Azure DevOps project name      | `my-project` |
+| `AZURE_DEVOPS_REPOSITORY`   | Azure DevOps repository name   | `my-repo`    |
 
 ## Usage Examples
 
@@ -53,18 +54,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Review Azure DevOps PR
         uses: augmentcode/augment-agent@v0
         with:
           augment_session_auth: ${{ secrets.AUGMENT_SESSION_AUTH }}
-          platform: "azure-devops"
+          platform: 'azure-devops'
           azure_devops_token: ${{ secrets.AZURE_DEVOPS_TOKEN }}
           azure_devops_organization: ${{ vars.AZURE_DEVOPS_ORGANIZATION }}
           azure_devops_project: ${{ vars.AZURE_DEVOPS_PROJECT }}
           azure_devops_repository: ${{ vars.AZURE_DEVOPS_REPOSITORY }}
           azure_devops_pull_request_id: ${{ github.event.pull_request.number }}
-          instruction: "Review this Azure DevOps pull request for code quality and security issues"
+          instruction: 'Review this Azure DevOps pull request for code quality and security issues'
 ```
 
 ### Template-Based Azure DevOps Review
@@ -80,45 +81,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Create Azure DevOps template
         run: |
           mkdir -p .github/templates
           cat > .github/templates/azure-devops-review.njk << 'EOF'
           Review Azure DevOps PR #{{ pr.pullRequestId }}: "{{ pr.title }}"
-          
+
           **Organization:** {{ pr.sourceRef.repo.organization }}
           **Project:** {{ pr.sourceRef.repo.project }}
           **Repository:** {{ pr.sourceRef.repo.repository }}
           **Author:** {{ pr.author }}
           **Branch:** {{ pr.sourceRef.ref }} → {{ pr.targetRef.ref }}
-          
+
           **Changed Files:**
           {% for file in pr.changed_files_list %}
           - {{ file.path }}
           {% endfor %}
-          
+
           **Code Changes:**
           {{ pr.diff_file | maybe_read_file }}
-          
+
           Please provide a comprehensive review focusing on:
           - Code quality and best practices
           - Security considerations
           - Azure DevOps integration best practices
           EOF
-      
+
       - name: Azure DevOps Template Review
         uses: augmentcode/augment-agent@v0
         with:
           augment_session_auth: ${{ secrets.AUGMENT_SESSION_AUTH }}
-          platform: "azure-devops"
+          platform: 'azure-devops'
           azure_devops_token: ${{ secrets.AZURE_DEVOPS_TOKEN }}
           azure_devops_organization: ${{ vars.AZURE_DEVOPS_ORGANIZATION }}
           azure_devops_project: ${{ vars.AZURE_DEVOPS_PROJECT }}
           azure_devops_repository: ${{ vars.AZURE_DEVOPS_REPOSITORY }}
           azure_devops_pull_request_id: ${{ github.event.pull_request.number }}
-          template_directory: ".github/templates"
-          template_name: "azure-devops-review.njk"
+          template_directory: '.github/templates'
+          template_name: 'azure-devops-review.njk'
 ```
 
 ### Work Item Analysis
@@ -138,17 +139,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Analyze Work Item
         uses: augmentcode/augment-agent@v0
         with:
           augment_session_auth: ${{ secrets.AUGMENT_SESSION_AUTH }}
-          platform: "azure-devops"
+          platform: 'azure-devops'
           azure_devops_token: ${{ secrets.AZURE_DEVOPS_TOKEN }}
           azure_devops_organization: ${{ vars.AZURE_DEVOPS_ORGANIZATION }}
           azure_devops_project: ${{ vars.AZURE_DEVOPS_PROJECT }}
           azure_devops_work_item_id: ${{ github.event.inputs.work_item_id }}
-          instruction: "Analyze this work item and provide requirements breakdown, technical impact assessment, and implementation recommendations"
+          instruction: 'Analyze this work item and provide requirements breakdown, technical impact assessment, and implementation recommendations'
 ```
 
 ## Template Context Variables

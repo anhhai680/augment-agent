@@ -126,34 +126,34 @@ When using `platform: "azure-devops"`, templates have access to Azure DevOps spe
 
 ### Inputs
 
-| Input                  | Description                                           | Required | Example                                     |
-| ---------------------- | ----------------------------------------------------- | -------- | ------------------------------------------- |
-| `augment_session_auth` | Augment session authentication JSON (store as secret) | No\*\*   | `${{ secrets.AUGMENT_SESSION_AUTH }}`       |
-| `augment_api_token`    | API token for Augment services (store as secret)      | No\*\*   | `${{ secrets.AUGMENT_API_TOKEN }}`          |
-| `augment_api_url`      | Augment API endpoint URL (store as variable)          | No\*\*   | `${{ vars.AUGMENT_API_URL }}`               |
-| `github_token`         | GitHub token with `repo` and `user:email` scopes.     | No       | `${{ secrets.GITHUB_TOKEN }}`               |
-| `instruction`          | Direct instruction text for simple commands           | No\*     | `"Generate PR description"`                 |
-| `instruction_file`     | Path to file with detailed instructions               | No\*     | `/tmp/instruction.txt`                      |
-| `template_directory`   | Path to template directory for dynamic instructions   | No\*     | `.github/templates`                         |
-| `template_name`        | Template file name (default: prompt.njk)              | No       | `pr-review.njk`                             |
-| `pull_number`          | PR number for template context extraction             | No       | `${{ github.event.pull_request.number }}`   |
-| `repo_name`            | Repository name for template context                  | No       | `${{ github.repository }}`                  |
-| `custom_context`       | Additional JSON context for templates                 | No       | `'{"priority": "high"}'`                    |
-| `model`                | Model to use; passed through to auggie as --model     | No       | e.g. `sonnet4`, from `auggie --list-models` |
-| `platform`            | Platform for context extraction (github or azure-devops) | No | `"azure-devops"` |
-| `azure_devops_token`   | Azure DevOps Personal Access Token (store as secret)  | No       | `${{ secrets.AZURE_DEVOPS_TOKEN }}`         |
-| `azure_devops_organization` | Azure DevOps organization name                    | No       | `"my-organization"`                         |
-| `azure_devops_project` | Azure DevOps project name                            | No       | `"my-project"`                              |
-| `azure_devops_repository` | Azure DevOps repository name                      | No       | `"my-repository"`                           |
-| `azure_devops_pull_request_id` | Azure DevOps pull request ID (not GitHub PR number) | No | `123` |
-| `azure_devops_work_item_id` | Azure DevOps work item ID for context extraction   | No | `456` |
-| `azure_devops_build_id` | Azure DevOps build ID for context extraction        | No | `789` |
-| `llm_provider` | LLM provider to use (auggie, openai, claude, google) | No | `"auggie"` |
-| `llm_api_key` | API key for the selected LLM provider (store as secret) | No | `${{ secrets.OPENAI_API_KEY }}` |
-| `llm_base_url` | Base URL for the LLM provider API (for custom endpoints) | No | `"https://api.openai.com/v1"` |
-| `llm_temperature` | Temperature setting for LLM generation (0.0 to 2.0) | No | `"0.7"` |
-| `llm_max_tokens` | Maximum tokens for LLM response | No | `"4000"` |
-| `llm_timeout` | Timeout for LLM API requests in milliseconds | No | `"30000"` |
+| Input                          | Description                                              | Required | Example                                     |
+| ------------------------------ | -------------------------------------------------------- | -------- | ------------------------------------------- |
+| `augment_session_auth`         | Augment session authentication JSON (store as secret)    | No\*\*   | `${{ secrets.AUGMENT_SESSION_AUTH }}`       |
+| `augment_api_token`            | API token for Augment services (store as secret)         | No\*\*   | `${{ secrets.AUGMENT_API_TOKEN }}`          |
+| `augment_api_url`              | Augment API endpoint URL (store as variable)             | No\*\*   | `${{ vars.AUGMENT_API_URL }}`               |
+| `github_token`                 | GitHub token with `repo` and `user:email` scopes.        | No       | `${{ secrets.GITHUB_TOKEN }}`               |
+| `instruction`                  | Direct instruction text for simple commands              | No\*     | `"Generate PR description"`                 |
+| `instruction_file`             | Path to file with detailed instructions                  | No\*     | `/tmp/instruction.txt`                      |
+| `template_directory`           | Path to template directory for dynamic instructions      | No\*     | `.github/templates`                         |
+| `template_name`                | Template file name (default: prompt.njk)                 | No       | `pr-review.njk`                             |
+| `pull_number`                  | PR number for template context extraction                | No       | `${{ github.event.pull_request.number }}`   |
+| `repo_name`                    | Repository name for template context                     | No       | `${{ github.repository }}`                  |
+| `custom_context`               | Additional JSON context for templates                    | No       | `'{"priority": "high"}'`                    |
+| `model`                        | Model to use; passed through to auggie as --model        | No       | e.g. `sonnet4`, from `auggie --list-models` |
+| `platform`                     | Platform for context extraction (github or azure-devops) | No       | `"azure-devops"`                            |
+| `azure_devops_token`           | Azure DevOps Personal Access Token (store as secret)     | No       | `${{ secrets.AZURE_DEVOPS_TOKEN }}`         |
+| `azure_devops_organization`    | Azure DevOps organization name                           | No       | `"my-organization"`                         |
+| `azure_devops_project`         | Azure DevOps project name                                | No       | `"my-project"`                              |
+| `azure_devops_repository`      | Azure DevOps repository name                             | No       | `"my-repository"`                           |
+| `azure_devops_pull_request_id` | Azure DevOps pull request ID (not GitHub PR number)      | No       | `123`                                       |
+| `azure_devops_work_item_id`    | Azure DevOps work item ID for context extraction         | No       | `456`                                       |
+| `azure_devops_build_id`        | Azure DevOps build ID for context extraction             | No       | `789`                                       |
+| `llm_provider`                 | LLM provider to use (auggie, openai, claude, google)     | No       | `"auggie"`                                  |
+| `llm_api_key`                  | API key for the selected LLM provider (store as secret)  | No       | `${{ secrets.OPENAI_API_KEY }}`             |
+| `llm_base_url`                 | Base URL for the LLM provider API (for custom endpoints) | No       | `"https://api.openai.com/v1"`               |
+| `llm_temperature`              | Temperature setting for LLM generation (0.0 to 2.0)      | No       | `"0.7"`                                     |
+| `llm_max_tokens`               | Maximum tokens for LLM response                          | No       | `"4000"`                                    |
+| `llm_timeout`                  | Timeout for LLM API requests in milliseconds             | No       | `"30000"`                                   |
 
 \*Either `instruction`, `instruction_file`, or `template_directory` must be provided.
 
@@ -175,42 +175,45 @@ The Augment Agent supports multiple LLM providers, giving you flexibility to cho
 
 - **Auggie** (default) - Uses Auggie service with session authentication
 - **OpenAI** - GPT-4, GPT-3.5, and other OpenAI models
-- **Claude** - Claude-3, Claude-2, and other Anthropic models  
+- **Claude** - Claude-3, Claude-2, and other Anthropic models
 - **Google** - Gemini Pro, Gemini Flash, and other Google models
 
 ### Quick Start with Different Providers
 
 **OpenAI:**
+
 ```yaml
 - name: OpenAI Code Review
   uses: augmentcode/augment-agent@v0
   with:
-    llm_provider: "openai"
+    llm_provider: 'openai'
     llm_api_key: ${{ secrets.OPENAI_API_KEY }}
-    model: "gpt-4"
-    instruction: "Review this code for security issues"
+    model: 'gpt-4'
+    instruction: 'Review this code for security issues'
 ```
 
 **Claude:**
+
 ```yaml
 - name: Claude Code Review
   uses: augmentcode/augment-agent@v0
   with:
-    llm_provider: "claude"
+    llm_provider: 'claude'
     llm_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-    model: "claude-3-sonnet-20240229"
-    instruction: "Review this code for security issues"
+    model: 'claude-3-sonnet-20240229'
+    instruction: 'Review this code for security issues'
 ```
 
 **Google:**
+
 ```yaml
 - name: Google Gemini Code Review
   uses: augmentcode/augment-agent@v0
   with:
-    llm_provider: "google"
+    llm_provider: 'google'
     llm_api_key: ${{ secrets.GOOGLE_API_KEY }}
-    model: "gemini-pro"
-    instruction: "Review this code for security issues"
+    model: 'gemini-pro'
+    instruction: 'Review this code for security issues'
 ```
 
 ### Example Workflows
@@ -230,14 +233,14 @@ Each provider supports advanced configuration:
 - name: Advanced LLM Configuration
   uses: augmentcode/augment-agent@v0
   with:
-    llm_provider: "openai"
+    llm_provider: 'openai'
     llm_api_key: ${{ secrets.OPENAI_API_KEY }}
-    llm_base_url: "https://api.openai.com/v1"  # Optional custom endpoint
-    model: "gpt-4"
-    llm_temperature: "0.3"      # 0.0 to 2.0
-    llm_max_tokens: "4000"      # Maximum response length
-    llm_timeout: "30000"        # Timeout in milliseconds
-    instruction: "Analyze this code"
+    llm_base_url: 'https://api.openai.com/v1' # Optional custom endpoint
+    model: 'gpt-4'
+    llm_temperature: '0.3' # 0.0 to 2.0
+    llm_max_tokens: '4000' # Maximum response length
+    llm_timeout: '30000' # Timeout in milliseconds
+    instruction: 'Analyze this code'
 ```
 
 See [LLM_PROVIDERS.md](./LLM_PROVIDERS.md) for complete documentation on all LLM providers, including setup instructions, model options, and best practices.

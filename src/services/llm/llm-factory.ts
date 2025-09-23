@@ -23,16 +23,16 @@ export class LLMFactory {
     switch (providerType) {
       case 'auggie':
         return new AuggieProvider(config);
-      
+
       case 'openai':
         return new OpenAIProvider(config);
-      
+
       case 'claude':
         return new ClaudeProvider(config);
-      
+
       case 'google':
         return new GoogleProvider(config);
-      
+
       default:
         throw new Error(`Unknown LLM provider: ${providerType}`);
     }

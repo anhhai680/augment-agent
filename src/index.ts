@@ -58,7 +58,7 @@ async function processTemplate(inputs: ActionInputs): Promise<string> {
 async function runLLM(inputs: ActionInputs): Promise<void> {
   let instruction_value: string;
   let is_file: boolean;
-  
+
   if (inputs.instruction) {
     instruction_value = inputs.instruction;
     is_file = false;
@@ -86,15 +86,22 @@ async function runLLM(inputs: ActionInputs): Promise<void> {
 /**
  * Run LLM with unified provider system
  */
-async function runUnifiedLLM(inputs: ActionInputs, instruction_value: string, is_file: boolean): Promise<void> {
+async function runUnifiedLLM(
+  inputs: ActionInputs,
+  instruction_value: string,
+  is_file: boolean
+): Promise<void> {
   try {
     // Validate required fields for LLM providers
     if (!inputs.llmProvider) {
       throw new Error('LLM provider is required for LLM execution');
     }
-    
+
     // Only validate API key for non-Auggie providers
-    if (inputs.llmProvider !== 'auggie' && (!inputs.llmApiKey || inputs.llmApiKey.trim().length === 0)) {
+    if (
+      inputs.llmProvider !== 'auggie' &&
+      (!inputs.llmApiKey || inputs.llmApiKey.trim().length === 0)
+    ) {
       throw new Error(`API key is required for ${inputs.llmProvider} provider`);
     }
 
@@ -104,14 +111,14 @@ async function runUnifiedLLM(inputs: ActionInputs, instruction_value: string, is
       model: inputs.model || undefined,
       temperature: inputs.llmTemperature,
       maxTokens: inputs.llmMaxTokens,
-      timeout: inputs.llmTimeout
+      timeout: inputs.llmTimeout,
     };
-    
+
     // Only add baseUrl if it's defined
     if (inputs.llmBaseUrl) {
       config.baseUrl = inputs.llmBaseUrl;
     }
-    
+
     const llmProvider = LLMFactory.createProvider(inputs.llmProvider, config);
 
     // Validate configuration
@@ -127,25 +134,25 @@ async function runUnifiedLLM(inputs: ActionInputs, instruction_value: string, is
     }
 
     logger.info(`🚀 Generating response with ${llmProvider.getProviderName()}`);
-    
+
     // Generate response
     const response = await llmProvider.generateResponse(instructionContent);
-    
+
     // Output the response to console
     console.log(response.content);
-    
+
     // Post comment to PR if requested and we have the necessary context
     await postCommentIfRequested(inputs, response.content);
-    
+
     // Log usage information if available
     if (response.usage) {
       logger.info('📊 Token usage', {
         promptTokens: response.usage.promptTokens,
         completionTokens: response.usage.completionTokens,
-        totalTokens: response.usage.totalTokens
+        totalTokens: response.usage.totalTokens,
       });
     }
-    
+
     logger.info('✅ Augment Agent completed successfully');
   } catch (error) {
     logger.error('LLM provider failed', error);
@@ -165,7 +172,9 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
 
   // Check if we have the necessary context for posting comments
   if (!inputs.githubToken || !inputs.repoName || !inputs.pullNumber) {
-    logger.warning('Cannot post comment: missing required context (github_token, repo_name, pull_number)');
+    logger.warning(
+      'Cannot post comment: missing required context (github_token, repo_name, pull_number)'
+    );
     return;
   }
 
@@ -177,7 +186,7 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
 
     // Parse repository information
     const repoInfo = ValidationUtils.parseRepoName(inputs.repoName);
-    
+
     // Create GitHub service
     const githubService = new GitHubService({
       token: inputs.githubToken,
@@ -191,7 +200,7 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
       useInlineComments: inputs.useInlineComments,
       inlineCommentStrategy: inputs.inlineCommentStrategy,
       commentType: inputs.commentType,
-      reviewEvent: inputs.reviewEvent
+      reviewEvent: inputs.reviewEvent,
     });
 
     // Check if inline comments are requested
@@ -199,25 +208,27 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
       logger.info(`📝 Processing inline comments for PR #${inputs.pullNumber}`);
       logger.debug('Inline comment settings:', {
         useInlineComments: inputs.useInlineComments,
-        strategy: inputs.inlineCommentStrategy || 'review_with_comments'
+        strategy: inputs.inlineCommentStrategy || 'review_with_comments',
       });
-      
+
       // Parse the review content for structured comments
       const parsedReview = ReviewParser.parseReview(content);
-      
+
       logger.info(`Review parsing result: ${parsedReview.comments.length} comments found`, {
         hasInlineComments: parsedReview.hasInlineComments,
-        summaryLength: parsedReview.summary.length
+        summaryLength: parsedReview.summary.length,
       });
-      
+
       if (parsedReview.comments && parsedReview.comments.length > 0) {
         const strategy = inputs.inlineCommentStrategy || 'review_with_comments';
-        
+
         logger.info(`Using strategy: ${strategy} for ${parsedReview.comments.length} comments`);
-        
+
         if (strategy === 'review_with_comments') {
           // Post all comments as part of a single review
-          logger.info(`📝 Posting ${parsedReview.comments.length} inline comments as review to PR #${inputs.pullNumber}`);
+          logger.info(
+            `📝 Posting ${parsedReview.comments.length} inline comments as review to PR #${inputs.pullNumber}`
+          );
           const reviewEvent = inputs.reviewEvent || 'COMMENT';
           await githubService.createPullRequestReviewWithComments(
             inputs.pullNumber,
@@ -227,17 +238,19 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
           );
         } else if (strategy === 'individual_comments') {
           // Post each comment individually
-          logger.info(`� Posting ${parsedReview.comments.length} individual inline comments to PR #${inputs.pullNumber}`);
+          logger.info(
+            `� Posting ${parsedReview.comments.length} individual inline comments to PR #${inputs.pullNumber}`
+          );
           for (const comment of parsedReview.comments) {
             await githubService.createIndividualReviewComment(inputs.pullNumber, comment);
           }
-          
+
           // Also post a summary comment if available
           if (parsedReview.summary) {
             await githubService.createPullRequestComment(inputs.pullNumber, parsedReview.summary);
           }
         }
-        
+
         logger.info('✅ Inline comments posted successfully');
       } else {
         // Fall back to regular comment if no structured comments found
@@ -245,7 +258,7 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
         logger.debug('Parsed review details:', {
           summaryLength: parsedReview.summary.length,
           commentsFound: parsedReview.comments.length,
-          hasInlineComments: parsedReview.hasInlineComments
+          hasInlineComments: parsedReview.hasInlineComments,
         });
         await postRegularComment(githubService, inputs, content);
       }
@@ -254,7 +267,6 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
       logger.info('Inline comments disabled, posting regular comment');
       await postRegularComment(githubService, inputs, content);
     }
-    
   } catch (error) {
     logger.error('Failed to post comment to PR', error);
     // Don't throw the error - the main task was successful even if comment posting failed
@@ -264,18 +276,26 @@ async function postCommentIfRequested(inputs: ActionInputs, content: string): Pr
 /**
  * Post a regular comment (non-inline)
  */
-async function postRegularComment(githubService: any, inputs: ActionInputs, content: string): Promise<void> {
+async function postRegularComment(
+  githubService: any,
+  inputs: ActionInputs,
+  content: string
+): Promise<void> {
   const commentType = inputs.commentType || 'comment';
-  
+
   if (commentType === 'review') {
     const reviewEvent = inputs.reviewEvent || 'COMMENT';
     logger.info(`📝 Posting review comment to PR #${inputs.pullNumber} with event: ${reviewEvent}`);
-    await githubService.createPullRequestReview(inputs.pullNumber, content, reviewEvent as 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES');
+    await githubService.createPullRequestReview(
+      inputs.pullNumber,
+      content,
+      reviewEvent as 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES'
+    );
   } else {
     logger.info(`💬 Posting comment to PR #${inputs.pullNumber}`);
     await githubService.createPullRequestComment(inputs.pullNumber, content);
   }
-  
+
   logger.info('✅ Comment posted successfully');
 }
 

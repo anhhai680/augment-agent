@@ -2,7 +2,14 @@
  * Azure DevOps API service for PR and Work Item information extraction
  */
 
-import { AzureDevOpsPullRequest, AzureDevOpsPullRequestFile, AzureDevOpsPullRequestDiff, AzureDevOpsWorkItem, AzureDevOpsBuildInfo, AzureDevOpsPipelineInfo } from '../types/azure-devops.js';
+import {
+  AzureDevOpsPullRequest,
+  AzureDevOpsPullRequestFile,
+  AzureDevOpsPullRequestDiff,
+  AzureDevOpsWorkItem,
+  AzureDevOpsBuildInfo,
+  AzureDevOpsPipelineInfo,
+} from '../types/azure-devops.js';
 import { TEMPLATE_CONFIG, ERROR } from '../config/constants.js';
 import { logger } from '../utils/logger.js';
 
@@ -13,10 +20,10 @@ export class AzureDevOpsService {
   private repository: string;
   private token: string;
 
-  constructor(config: { 
-    token: string; 
-    organization: string; 
-    project: string; 
+  constructor(config: {
+    token: string;
+    organization: string;
+    project: string;
     repository: string;
     baseUrl?: string;
   }) {
@@ -50,7 +57,7 @@ export class AzureDevOpsService {
    */
   private validateToken(): void {
     let token = this.token;
-    
+
     // Extract token if it contains username:token format
     if (this.token.includes(':')) {
       const parts = this.token.split(':');
@@ -58,12 +65,12 @@ export class AzureDevOpsService {
         token = parts[1]; // Get the token part after the username
       }
     }
-    
+
     // Check minimum length
     if (token.length < 52) {
       logger.warning(
         `PAT token appears to be shorter than expected Azure DevOps PAT format (${token.length} characters). ` +
-        `Azure DevOps PATs are typically 52+ characters for classic format or 84 characters for new format.`
+          `Azure DevOps PATs are typically 52+ characters for classic format or 84 characters for new format.`
       );
     }
 
@@ -73,7 +80,9 @@ export class AzureDevOpsService {
       if (signature === 'AZDO') {
         logger.debug('Detected new Azure DevOps PAT format with AZDO signature');
       } else {
-        logger.warning('Token is 84 characters but does not contain expected AZDO signature at positions 76-79');
+        logger.warning(
+          'Token is 84 characters but does not contain expected AZDO signature at positions 76-79'
+        );
       }
     }
 
@@ -85,7 +94,9 @@ export class AzureDevOpsService {
     // Basic character validation (Azure DevOps PATs use base64-like characters)
     const validTokenPattern = /^[A-Za-z0-9+/=]+$/;
     if (!validTokenPattern.test(token)) {
-      throw new Error('PAT token contains invalid characters. Expected alphanumeric characters with +, /, and = only');
+      throw new Error(
+        'PAT token contains invalid characters. Expected alphanumeric characters with +, /, and = only'
+      );
     }
   }
 
@@ -113,14 +124,14 @@ export class AzureDevOpsService {
 
   private async makeRequest<T>(endpoint: string): Promise<T> {
     const url = `${this.baseUrl}/${this.organization}/${this.project}/_apis/${endpoint}`;
-    
+
     try {
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Basic ${this.formatAuthenticationToken()}`,
+          Authorization: `Basic ${this.formatAuthenticationToken()}`,
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
+          Accept: 'application/json',
+        },
       });
 
       if (!response.ok) {
@@ -128,27 +139,29 @@ export class AzureDevOpsService {
         if (response.status === 401) {
           throw new Error(
             `Azure DevOps authentication failed (401 Unauthorized). ` +
-            `Please verify your PAT token has the required permissions and is not expired. ` +
-            `Ensure the token format is correct (should be 52+ characters for classic PATs or 84 characters for new format).`
+              `Please verify your PAT token has the required permissions and is not expired. ` +
+              `Ensure the token format is correct (should be 52+ characters for classic PATs or 84 characters for new format).`
           );
         } else if (response.status === 403) {
           throw new Error(
             `Azure DevOps access forbidden (403 Forbidden). ` +
-            `Your PAT token may lack the necessary scopes for this operation. ` +
-            `Verify the token has appropriate permissions for the requested resource.`
+              `Your PAT token may lack the necessary scopes for this operation. ` +
+              `Verify the token has appropriate permissions for the requested resource.`
           );
         } else if (response.status === 404) {
           throw new Error(
             `Azure DevOps resource not found (404). ` +
-            `Verify the organization '${this.organization}', project '${this.project}', ` +
-            `and repository '${this.repository}' exist and are accessible.`
+              `Verify the organization '${this.organization}', project '${this.project}', ` +
+              `and repository '${this.repository}' exist and are accessible.`
           );
         }
-        
-        throw new Error(`Azure DevOps API request failed: ${response.status} ${response.statusText}`);
+
+        throw new Error(
+          `Azure DevOps API request failed: ${response.status} ${response.statusText}`
+        );
       }
 
-      const data = await response.json() as { value?: T } & T;
+      const data = (await response.json()) as { value?: T } & T;
       return data.value || data;
     } catch (error) {
       // Log detailed error information for debugging
@@ -158,9 +171,9 @@ export class AzureDevOpsService {
         project: this.project,
         repository: this.repository,
         tokenLength: this.token.length,
-        tokenHasUsername: this.token.includes(':')
+        tokenHasUsername: this.token.includes(':'),
       };
-      
+
       logger.error(
         `${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch from ${endpoint}`,
         error,
@@ -172,14 +185,19 @@ export class AzureDevOpsService {
 
   async getPullRequest(pullRequestId: number): Promise<AzureDevOpsPullRequest> {
     try {
-      logger.debug(`Fetching PR ${pullRequestId} from ${this.organization}/${this.project}/${this.repository}`);
+      logger.debug(
+        `Fetching PR ${pullRequestId} from ${this.organization}/${this.project}/${this.repository}`
+      );
 
       const endpoint = `git/repositories/${this.repository}/pullrequests/${pullRequestId}?api-version=7.0`;
       const data = await this.makeRequest<AzureDevOpsPullRequest>(endpoint);
 
       return data;
     } catch (error) {
-      logger.error(`${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch PR ${pullRequestId}`, error);
+      logger.error(
+        `${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch PR ${pullRequestId}`,
+        error
+      );
       throw error;
     }
   }
@@ -198,7 +216,10 @@ export class AzureDevOpsService {
 
       return data;
     } catch (error) {
-      logger.error(`${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch PR files`, error);
+      logger.error(
+        `${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch PR files`,
+        error
+      );
       throw error;
     }
   }
@@ -212,7 +233,10 @@ export class AzureDevOpsService {
 
       return data;
     } catch (error) {
-      logger.error(`${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch PR diff`, error);
+      logger.error(
+        `${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch PR diff`,
+        error
+      );
       throw error;
     }
   }
@@ -226,7 +250,10 @@ export class AzureDevOpsService {
 
       return data;
     } catch (error) {
-      logger.error(`${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch work item ${workItemId}`, error);
+      logger.error(
+        `${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch work item ${workItemId}`,
+        error
+      );
       throw error;
     }
   }
@@ -240,7 +267,10 @@ export class AzureDevOpsService {
 
       return data;
     } catch (error) {
-      logger.error(`${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch build info ${buildId}`, error);
+      logger.error(
+        `${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch build info ${buildId}`,
+        error
+      );
       throw error;
     }
   }
@@ -254,7 +284,10 @@ export class AzureDevOpsService {
 
       return data;
     } catch (error) {
-      logger.error(`${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch pipeline info ${pipelineId}`, error);
+      logger.error(
+        `${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch pipeline info ${pipelineId}`,
+        error
+      );
       throw error;
     }
   }
@@ -268,7 +301,10 @@ export class AzureDevOpsService {
 
       return data;
     } catch (error) {
-      logger.error(`${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch PR commits`, error);
+      logger.error(
+        `${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch PR commits`,
+        error
+      );
       throw error;
     }
   }
@@ -282,7 +318,10 @@ export class AzureDevOpsService {
 
       return data;
     } catch (error) {
-      logger.error(`${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch PR threads`, error);
+      logger.error(
+        `${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch PR threads`,
+        error
+      );
       throw error;
     }
   }
@@ -296,7 +335,10 @@ export class AzureDevOpsService {
 
       return data;
     } catch (error) {
-      logger.error(`${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch commit diff`, error);
+      logger.error(
+        `${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch commit diff`,
+        error
+      );
       throw error;
     }
   }
@@ -306,12 +348,15 @@ export class AzureDevOpsService {
       logger.debug(`Fetching file content for ${filePath} at commit ${commitId}`);
 
       const endpoint = `git/repositories/${this.repository}/items?path=${encodeURIComponent(filePath)}&version=${commitId}&api-version=7.0`;
-      const response = await fetch(`${this.baseUrl}/${this.organization}/${this.project}/_apis/${endpoint}`, {
-        headers: {
-          'Authorization': `Basic ${this.formatAuthenticationToken()}`,
-          'Accept': 'text/plain'
+      const response = await fetch(
+        `${this.baseUrl}/${this.organization}/${this.project}/_apis/${endpoint}`,
+        {
+          headers: {
+            Authorization: `Basic ${this.formatAuthenticationToken()}`,
+            Accept: 'text/plain',
+          },
         }
-      });
+      );
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -323,21 +368,24 @@ export class AzureDevOpsService {
 
       return await response.text();
     } catch (error) {
-      logger.error(`${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch file content`, error);
+      logger.error(
+        `${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch file content`,
+        error
+      );
       throw error;
     }
   }
 
   /**
    * Retrieves detailed pull request diff with actual line-by-line changes.
-   * 
+   *
    * This method addresses the limitation of Azure DevOps /diffs API endpoint which only
    * provides metadata. Instead, it:
    * 1. Gets file content from source and target commits using Azure DevOps Git API
    * 2. Generates proper unified diff format with actual code changes
    * 3. Handles various edge cases (binary files, large files, missing files)
    * 4. Processes files in batches to avoid API rate limits
-   * 
+   *
    * @param pullRequestId The ID of the pull request to generate diff for
    * @returns A string containing unified diff format with actual line changes
    */
@@ -356,7 +404,7 @@ export class AzureDevOpsService {
 
       // Get the list of changed files
       const files = await this.getPullRequestFiles(pullRequestId);
-      
+
       if (!files || files.length === 0) {
         logger.info('No files changed in pull request');
         return '';
@@ -370,11 +418,11 @@ export class AzureDevOpsService {
       const batchSize = 5;
       for (let i = 0; i < files.length; i += batchSize) {
         const batch = files.slice(i, i + batchSize);
-        
-        const batchPromises = batch.map(async (file) => {
+
+        const batchPromises = batch.map(async file => {
           try {
             const filePath = file.path;
-            
+
             // Skip binary files or very large files
             if (this.shouldSkipFile(filePath, file.size)) {
               logger.debug(`Skipping file ${filePath} (binary or too large)`);
@@ -383,14 +431,14 @@ export class AzureDevOpsService {
 
             // Get file content from both commits
             const [sourceContent, targetContent] = await Promise.all([
-              this.getFileContent(targetCommitId, filePath).catch((error) => {
+              this.getFileContent(targetCommitId, filePath).catch(error => {
                 logger.debug(`Failed to get base content for ${filePath}`, error);
                 return '';
               }),
-              this.getFileContent(sourceCommitId, filePath).catch((error) => {
+              this.getFileContent(sourceCommitId, filePath).catch(error => {
                 logger.debug(`Failed to get source content for ${filePath}`, error);
                 return '';
-              })
+              }),
             ]);
 
             // Generate unified diff for this file
@@ -401,7 +449,10 @@ export class AzureDevOpsService {
             }
             return null;
           } catch (error) {
-            logger.warning(`Failed to generate diff for file ${file.path}`, error as Record<string, unknown>);
+            logger.warning(
+              `Failed to generate diff for file ${file.path}`,
+              error as Record<string, unknown>
+            );
             failedFiles.push(file.path);
             return null;
           }
@@ -419,7 +470,7 @@ export class AzureDevOpsService {
         totalFiles: files.length,
         processedFiles: processedFiles.length,
         failedFiles: failedFiles.length,
-        diffLength: fullDiff.length
+        diffLength: fullDiff.length,
       });
 
       if (failedFiles.length > 0) {
@@ -428,16 +479,31 @@ export class AzureDevOpsService {
 
       return fullDiff;
     } catch (error) {
-      logger.error(`${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch detailed PR diff`, error);
+      logger.error(
+        `${ERROR.AZURE_DEVOPS?.API_ERROR || 'Azure DevOps API Error'}: Failed to fetch detailed PR diff`,
+        error
+      );
       throw error;
     }
   }
 
   private shouldSkipFile(filePath: string, fileSize?: number): boolean {
     // Skip binary file extensions
-    const binaryExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.zip', '.exe', '.dll', '.so', '.dylib', '.bin'];
+    const binaryExtensions = [
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.gif',
+      '.pdf',
+      '.zip',
+      '.exe',
+      '.dll',
+      '.so',
+      '.dylib',
+      '.bin',
+    ];
     const extension = filePath.toLowerCase().substring(filePath.lastIndexOf('.'));
-    
+
     if (binaryExtensions.includes(extension)) {
       return true;
     }
@@ -462,7 +528,7 @@ export class AzureDevOpsService {
 
     const oldLines = oldContent ? oldContent.split('\n') : [''];
     const newLines = newContent ? newContent.split('\n') : [''];
-    
+
     // Simple diff implementation - in production, you might want to use a more sophisticated algorithm
     const diff = this.computeUnifiedDiff(oldLines, newLines, filePath);
     return diff;
@@ -473,7 +539,7 @@ export class AzureDevOpsService {
     const isDeletedFile = newLines.length === 1 && newLines[0] === '';
 
     let diff = '';
-    
+
     if (isNewFile) {
       diff += `diff --git a/${filePath} b/${filePath}\n`;
       diff += `new file mode 100644\n`;
@@ -500,7 +566,7 @@ export class AzureDevOpsService {
       diff += `index ${this.generateMockHash()}..${this.generateMockHash()} 100644\n`;
       diff += `--- a/${filePath}\n`;
       diff += `+++ b/${filePath}\n`;
-      
+
       const hunks = this.generateDiffHunks(oldLines, newLines);
       diff += hunks;
     }
@@ -511,7 +577,7 @@ export class AzureDevOpsService {
   private generateDiffHunks(oldLines: string[], newLines: string[]): string {
     let hunks = '';
     const maxLines = Math.max(oldLines.length, newLines.length);
-    
+
     if (maxLines === 0) {
       return '';
     }
@@ -528,15 +594,15 @@ export class AzureDevOpsService {
   private generateSingleHunk(oldLines: string[], newLines: string[]): string {
     const oldCount = oldLines.length;
     const newCount = newLines.length;
-    
+
     let hunk = `@@ -1,${oldCount} +1,${newCount} @@\n`;
-    
+
     const maxLength = Math.max(oldCount, newCount);
-    
+
     for (let i = 0; i < maxLength; i++) {
       const oldLine = i < oldCount ? oldLines[i] : null;
       const newLine = i < newCount ? newLines[i] : null;
-      
+
       if (oldLine !== null && newLine !== null) {
         if (oldLine === newLine) {
           hunk += ` ${oldLine}\n`;
@@ -550,7 +616,7 @@ export class AzureDevOpsService {
         hunk += `+${newLine}\n`;
       }
     }
-    
+
     return hunk;
   }
 
@@ -558,16 +624,16 @@ export class AzureDevOpsService {
     // For very large files, just show a summary
     const oldCount = oldLines.length;
     const newCount = newLines.length;
-    
+
     let hunks = `@@ -1,${Math.min(oldCount, 10)} +1,${Math.min(newCount, 10)} @@\n`;
     hunks += `[File too large for complete diff - showing first 10 lines]\n`;
-    
+
     const previewLength = Math.min(10, Math.max(oldCount, newCount));
-    
+
     for (let i = 0; i < previewLength; i++) {
       const oldLine = i < oldCount ? oldLines[i] : null;
       const newLine = i < newCount ? newLines[i] : null;
-      
+
       if (oldLine !== null && newLine !== null) {
         if (oldLine === newLine) {
           hunks += ` ${oldLine}\n`;
@@ -581,11 +647,11 @@ export class AzureDevOpsService {
         hunks += `+${newLine}\n`;
       }
     }
-    
+
     if (Math.max(oldCount, newCount) > 10) {
       hunks += `[... ${Math.max(oldCount, newCount) - 10} more lines not shown ...]\n`;
     }
-    
+
     return hunks;
   }
 

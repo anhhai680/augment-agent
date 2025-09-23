@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       azure_devops_pull_request_id:
-        description: 'Azure DevOps Pull Request ID'
+        description: "Azure DevOps Pull Request ID"
         required: true
         type: string
 

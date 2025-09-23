@@ -15,7 +15,9 @@ export function isGitHubTemplateContext(context: AnyTemplateContext): context is
 /**
  * Type guard to check if a context is an Azure DevOps template context
  */
-export function isAzureDevOpsTemplateContext(context: AnyTemplateContext): context is AzureDevOpsTemplateContext {
+export function isAzureDevOpsTemplateContext(
+  context: AnyTemplateContext
+): context is AzureDevOpsTemplateContext {
   return context.platform === 'azure-devops';
 }
 
@@ -29,7 +31,9 @@ export function getGitHubContext(context: AnyTemplateContext): TemplateContext |
 /**
  * Safely access Azure DevOps-specific context properties
  */
-export function getAzureDevOpsContext(context: AnyTemplateContext): AzureDevOpsTemplateContext | null {
+export function getAzureDevOpsContext(
+  context: AnyTemplateContext
+): AzureDevOpsTemplateContext | null {
   return isAzureDevOpsTemplateContext(context) ? context : null;
 }
 

@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       work_item_id:
-        description: 'Azure DevOps Work Item ID'
+        description: "Azure DevOps Work Item ID"
         required: true
         type: string
 
