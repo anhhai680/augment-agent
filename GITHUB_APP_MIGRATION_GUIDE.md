@@ -1,13 +1,13 @@
-# GitHub App Migration Guide for Augment Agent
+# GitHub App Migration Guide for Code Review Agent
 
-This guide provides a comprehensive roadmap for converting the current Augment Agent GitHub Action into a GitHub App, enabling better security, scalability, and user experience.
+This guide provides a comprehensive roadmap for converting the current Code Review Agent GitHub Action into a GitHub App, enabling better security, scalability, and user experience.
 
 ## Overview
 
 ### Current Architecture (GitHub Action)
 
 - **Trigger**: Manual workflow runs on PR events
-- **Authentication**: User-provided `GITHUB_TOKEN` and `AUGMENT_SESSION_AUTH`
+- **Authentication**: User-provided `GITHUB_TOKEN` and LLM provider API keys
 - **Installation**: Users copy workflow files to `.github/workflows/`
 - **Execution**: Runs in GitHub Actions runners
 - **Configuration**: Through workflow YAML files and repository secrets
@@ -44,13 +44,13 @@ Create a web server to handle GitHub webhooks and serve the app interface.
 // src/server/app.ts
 import express from 'express';
 import { createProbot } from 'probot';
-import { augmentAgentApp } from './probot-app.js';
+import { codeReviewAgentApp } from './probot-app.js';
 
 const app = express();
 const probot = createProbot();
 
 // Load the GitHub App
-probot.load(augmentAgentApp);
+probot.load(codeReviewAgentApp);
 
 // Webhook endpoint
 app.use('/webhooks', probot.webhooks.middleware);
@@ -70,9 +70,9 @@ Replace the current GitHub Action setup with Probot-based GitHub App handling:
 ```typescript
 // src/server/probot-app.ts
 import { Probot } from 'probot';
-import { AugmentAgentService } from '../services/augment-agent-service.js';
+import { CodeReviewAgentService } from '../services/code-review-agent-service.js';
 
-export const augmentAgentApp = (app: Probot) => {
+export const codeReviewAgentApp = (app: Probot) => {
   // Handle pull request events
   app.on(['pull_request.opened', 'pull_request.synchronize'], async context => {
     const { pull_request, repository } = context.payload;
@@ -81,8 +81,8 @@ export const augmentAgentApp = (app: Probot) => {
       // Get installation-specific configuration
       const config = await getRepositoryConfig(context);
 
-      // Initialize the Augment Agent service
-      const agentService = new AugmentAgentService({
+      // Initialize the Code Review Agent service
+      const agentService = new CodeReviewAgentService({
         installation: context.payload.installation,
         repository: repository.full_name,
         pullRequest: pull_request,
@@ -138,9 +138,9 @@ export class GitHubAppService {
 }
 ```
 
-#### B. Augment Authentication Management
+#### B. LLM API Key Management
 
-Create a secure service for managing Augment API credentials:
+Create a secure service for managing LLM provider API credentials:
 
 ```typescript
 // src/services/credential-service.ts
@@ -151,22 +151,23 @@ export class CredentialService {
     this.encryptionKey = encryptionKey;
   }
 
-  async storeAugmentCredentials(
+  async storeLLMCredentials(
     installationId: number,
-    credentials: AugmentCredentials
+    provider: 'openai' | 'claude' | 'google',
+    apiKey: string
   ) {
-    const encrypted = encrypt(JSON.stringify(credentials), this.encryptionKey);
-    await this.database.storeCredentials(installationId, encrypted);
+    const encrypted = encrypt(apiKey, this.encryptionKey);
+    await this.database.storeCredentials(installationId, provider, encrypted);
   }
 
-  async getAugmentCredentials(
-    installationId: number
-  ): Promise<AugmentCredentials | null> {
-    const encrypted = await this.database.getCredentials(installationId);
+  async getLLMCredentials(
+    installationId: number,
+    provider: 'openai' | 'claude' | 'google'
+  ): Promise<string | null> {
+    const encrypted = await this.database.getCredentials(installationId, provider);
     if (!encrypted) return null;
 
-    const decrypted = decrypt(encrypted, this.encryptionKey);
-    return JSON.parse(decrypted);
+    return decrypt(encrypted, this.encryptionKey);
   }
 }
 ```
@@ -191,7 +192,7 @@ router.get('/config/:installationId', async (req, res) => {
   res.render('config', {
     installationId,
     config,
-    llmProviders: ['auggie', 'openai', 'claude', 'google'],
+    llmProviders: ['openai', 'claude', 'google'],
   });
 });
 
@@ -209,22 +210,22 @@ export { router as configRoutes };
 
 #### B. Repository-level Configuration
 
-Support `.augment.yml` configuration files in repositories:
+Support `.codereviewer.yml` configuration files in repositories:
 
 ```yaml
-# .augment.yml
+# .codereviewer.yml
 version: 1
 enabled: true
 triggers:
   - pull_request.opened
   - pull_request.synchronize
 llm:
-  provider: auggie
+  provider: openai
   model: gpt-4
   temperature: 0.7
 templates:
   default: 'code-review'
-  custom_templates_dir: '.augment/templates'
+  custom_templates_dir: '.codereviewer/templates'
 review:
   auto_comment: true
   request_changes: false
@@ -284,7 +285,9 @@ CREATE TABLE processing_logs (
 
 ### 5. Deployment Architecture
 
-#### A. Container Setup
+You have several deployment options for the GitHub App. Choose the one that best fits your needs and infrastructure:
+
+#### A. Container Setup (Required for all deployment options)
 
 ```dockerfile
 # Dockerfile
@@ -309,27 +312,104 @@ EXPOSE 3000
 CMD ["bun", "run", "start"]
 ```
 
-#### B. Kubernetes Deployment
+#### B. Deployment Options
+
+**Option 1: Simple VPS/Cloud Server (Recommended for MVP)**
+
+Deploy directly on a virtual private server or cloud instance:
+
+```bash
+# On your server
+git clone <your-repo>
+cd code-review-agent
+cp .env.example .env
+# Edit .env with your configuration
+
+# Using Docker
+docker build -t code-review-agent .
+docker run -d \
+  --name code-review-agent \
+  -p 3000:3000 \
+  --env-file .env \
+  code-review-agent
+
+# Or run directly
+bun install
+bun run build
+bun run start
+```
+
+**Option 2: Platform-as-a-Service (Easiest)**
+
+Deploy to platforms like Railway, Render, or Heroku:
+
+```yaml
+# railway.toml or similar
+[build]
+  builder = "nixpacks"
+
+[deploy]
+  startCommand = "bun run start"
+
+[env]
+  NODE_VERSION = "22"
+```
+
+**Option 3: Docker Compose (Local Development)**
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/codereviewer
+      - GITHUB_APP_ID=${GITHUB_APP_ID}
+      - GITHUB_PRIVATE_KEY=${GITHUB_PRIVATE_KEY}
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=codereviewer
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+**Option 4: Kubernetes (For Production Scale)**
+
+Only use this if you need advanced orchestration, auto-scaling, or already have Kubernetes infrastructure:
 
 ```yaml
 # k8s/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: augment-agent-app
+  name: code-review-agent-app
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: augment-agent-app
+      app: code-review-agent-app
   template:
     metadata:
       labels:
-        app: augment-agent-app
+        app: code-review-agent-app
     spec:
       containers:
         - name: app
-          image: augmentcode/augment-agent-app:latest
+          image: code-review-agent/code-review-agent-app:latest
           ports:
             - containerPort: 3000
           env:
@@ -343,21 +423,24 @@ spec:
                 secretKeyRef:
                   name: app-secrets
                   key: github-app-id
-            - name: GITHUB_PRIVATE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: app-secrets
-                  key: github-private-key
-            - name: WEBHOOK_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: app-secrets
-                  key: webhook-secret
-            - name: ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: app-secrets
-                  key: encryption-key
+```
+
+#### C. Environment Variables
+
+All deployment options require these environment variables:
+
+```bash
+# Required
+GITHUB_APP_ID=123456
+GITHUB_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n..."
+WEBHOOK_SECRET=your_webhook_secret
+DATABASE_URL=postgresql://user:password@host:5432/database
+ENCRYPTION_KEY=your_32_character_encryption_key
+
+# Optional
+PORT=3000
+NODE_ENV=production
+LOG_LEVEL=info
 ```
 
 ## Migration Steps
@@ -404,7 +487,7 @@ spec:
    - Implement installation setup wizard
 
 2. **Repository Integration**
-   - Support for `.augment.yml` configuration files
+   - Support for `.codereviewer.yml` configuration files
    - Template directory management
    - Custom instruction file support
 
@@ -476,18 +559,34 @@ The GitHub App will need the following permissions:
 
 ## Cost Considerations
 
-### Infrastructure Costs
+### Infrastructure Costs (By Deployment Option)
 
-- **Web servers**: $50-200/month depending on scale
-- **Database**: $20-100/month for PostgreSQL hosting
-- **CDN and load balancing**: $20-50/month
-- **Monitoring and logging**: $30-100/month
+**Option 1: Simple VPS/Cloud Server (MVP)**
+- **Single server**: $10-50/month (DigitalOcean, Linode, AWS EC2)
+- **Database**: $15-30/month (managed PostgreSQL)
+- **Domain/SSL**: $10-20/year
+- **Total**: ~$30-80/month
+
+**Option 2: Platform-as-a-Service (Easiest)**
+- **App hosting**: $20-100/month (Railway, Render, Heroku)
+- **Database add-on**: $20-50/month
+- **Total**: ~$40-150/month
+
+**Option 3: Docker Compose (Development)**
+- **Local development**: $0 (your machine)
+- **Small VPS for staging**: $10-20/month
+
+**Option 4: Kubernetes (Production Scale)**
+- **Managed Kubernetes**: $100-500/month (EKS, GKE, AKS)
+- **Load balancers**: $20-50/month
+- **Monitoring**: $30-100/month
+- **Total**: ~$150-650/month
 
 ### Development Costs
 
 - **Initial development**: 6-8 weeks of development time
 - **Ongoing maintenance**: 20-30% of initial development time annually
-- **Security audits**: $5,000-15,000 annually
+- **Security audits**: $5,000-15,000 annually (optional for small scale)
 
 ### Revenue Opportunities
 
@@ -530,4 +629,4 @@ The GitHub App will need the following permissions:
 4. **Beta testing** - Deploy to staging and test with select repositories
 5. **Production deployment** - Launch and submit to GitHub Marketplace
 
-This migration represents a significant architectural shift but will provide much better user experience, security, and scalability compared to the current GitHub Action approach.
+This migration represents a significant architectural shift but will provide much better user experience, security, and scalability compared to the current GitHub Action approach. By removing Augment dependencies, the agent becomes more focused on standard LLM providers (OpenAI, Claude, Google) while maintaining all core code review functionality.
