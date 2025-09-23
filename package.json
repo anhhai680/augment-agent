@@ -1,7 +1,7 @@
 {
-  "name": "augment-agent",
-  "version": "0.3.0",
-  "description": "AI-powered code assistance for GitHub Actions using Augment's intelligent development tools",
+  "name": "code-review-agent",
+  "version": "0.1.0",
+  "description": "AI-powered code assistance for GitHub Actions using Code Review's intelligent development tools",
   "main": "action.yml",
   "type": "module",
   "scripts": {
@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/anhhai680/augment-agent.git"
+    "url": "git+https://github.com/anhhai680/code-review-agent.git"
   },
   "keywords": [
     "github-action",
@@ -27,16 +27,16 @@
     "code-review",
     "pull-request",
     "automation",
-    "augment",
+    "code-review",
     "developer-tools",
     "ci-cd"
   ],
-  "author": "Augment Code",
+  "author": "anhhai680",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/anhhai680/augment-agent/issues"
+    "url": "https://github.com/anhhai680/code-review-agent/issues"
   },
-  "homepage": "https://github.com/anhhai680/augment-agent#readme",
+  "homepage": "https://github.com/anhhai680/code-review-agent#readme",
   "engines": {
     "node": ">=22.0.0",
     "bun": ">=1.0.0"
