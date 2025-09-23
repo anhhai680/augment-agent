@@ -40,17 +40,11 @@ jobs:
           fi
           
           # Read the template from the external file and substitute variables
-          TEMPLATE_CONTENT=$(cat src/prompts/code-review-instructions.md)
+          # Use environment variables for substitution to handle special characters properly
+          export PR_NUMBER REPOSITORY BASE_BRANCH HEAD_BRANCH DIFF_TRUNCATED CHANGED_FILES PR_DIFF
           
-          # Substitute variables in the template
-          echo "$TEMPLATE_CONTENT" | \
-            sed "s/\${PR_NUMBER}/$PR_NUMBER/g" | \
-            sed "s/\${REPOSITORY}/$REPOSITORY/g" | \
-            sed "s/\${BASE_BRANCH}/$BASE_BRANCH/g" | \
-            sed "s/\${HEAD_BRANCH}/$HEAD_BRANCH/g" | \
-            sed "s/\${DIFF_TRUNCATED}/$DIFF_TRUNCATED/g" | \
-            sed "s|\$CHANGED_FILES|$CHANGED_FILES|g" | \
-            sed "s|\$PR_DIFF|$PR_DIFF|g" > /tmp/code-review-instruction.txt
+          # Use envsubst for safer variable substitution
+          cat src/prompts/code-review-instructions.md | envsubst > /tmp/code-review-instruction.txt
 
       - name: Generate PR Review
         uses: ./
