@@ -25,6 +25,60 @@ export const INPUT_FIELD_MAP: Record<string, InputField> = {
   templateDirectory: { envVar: 'INPUT_TEMPLATE_DIRECTORY', required: false },
   templateName: { envVar: 'INPUT_TEMPLATE_NAME', required: false },
   model: { envVar: 'INPUT_MODEL', required: false },
+  // Azure DevOps specific inputs
+  azureDevOpsToken: { envVar: 'INPUT_AZURE_DEVOPS_TOKEN', required: false },
+  azureDevOpsOrganization: { envVar: 'INPUT_AZURE_DEVOPS_ORGANIZATION', required: false },
+  azureDevOpsProject: { envVar: 'INPUT_AZURE_DEVOPS_PROJECT', required: false },
+  azureDevOpsRepository: { envVar: 'INPUT_AZURE_DEVOPS_REPOSITORY', required: false },
+  azureDevOpsPullRequestId: {
+    envVar: 'INPUT_AZURE_DEVOPS_PULL_REQUEST_ID',
+    required: false,
+    transform: (val: string) => parseInt(val, 10),
+  },
+  azureDevOpsWorkItemId: {
+    envVar: 'INPUT_AZURE_DEVOPS_WORK_ITEM_ID',
+    required: false,
+    transform: (val: string) => parseInt(val, 10),
+  },
+  azureDevOpsBuildId: {
+    envVar: 'INPUT_AZURE_DEVOPS_BUILD_ID',
+    required: false,
+    transform: (val: string) => parseInt(val, 10),
+  },
+  platform: { envVar: 'INPUT_PLATFORM', required: false },
+  // LLM Provider inputs
+  llmProvider: { envVar: 'INPUT_LLM_PROVIDER', required: false },
+  llmApiKey: { envVar: 'INPUT_LLM_API_KEY', required: false },
+  llmBaseUrl: { envVar: 'INPUT_LLM_BASE_URL', required: false },
+  llmTemperature: {
+    envVar: 'INPUT_LLM_TEMPERATURE',
+    required: false,
+    transform: (val: string) => parseFloat(val),
+  },
+  llmMaxTokens: {
+    envVar: 'INPUT_LLM_MAX_TOKENS',
+    required: false,
+    transform: (val: string) => parseInt(val, 10),
+  },
+  llmTimeout: {
+    envVar: 'INPUT_LLM_TIMEOUT',
+    required: false,
+    transform: (val: string) => parseInt(val, 10),
+  },
+  // Comment posting configuration
+  postComment: {
+    envVar: 'INPUT_POST_COMMENT',
+    required: false,
+    transform: (val: string) => val.toLowerCase() === 'true',
+  },
+  commentType: { envVar: 'INPUT_COMMENT_TYPE', required: false },
+  reviewEvent: { envVar: 'INPUT_REVIEW_EVENT', required: false },
+  useInlineComments: {
+    envVar: 'INPUT_USE_INLINE_COMMENTS',
+    required: false,
+    transform: (val: string) => val.toLowerCase() === 'true',
+  },
+  inlineCommentStrategy: { envVar: 'INPUT_INLINE_COMMENT_STRATEGY', required: false },
 };
 
 export const TEMPLATE_CONFIG = {
@@ -42,6 +96,11 @@ export const PATHS = {
 export const ERROR = {
   GITHUB: {
     API_ERROR: 'GitHub API request failed',
+  },
+  AZURE_DEVOPS: {
+    API_ERROR: 'Azure DevOps API request failed',
+    MISSING_CONFIG: 'Azure DevOps configuration is incomplete',
+    INVALID_PLATFORM: 'Invalid platform specified',
   },
   INPUT: {
     CONFLICTING_INSTRUCTION_INPUTS: 'Cannot specify both instruction and instruction_file',

@@ -1,0 +1,65 @@
+name: Auto-review PRs
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - main
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create instruction file
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ secrets.CODEREVIEW_GITHUB_TOKEN }}
+        run: |
+          # Get the list of changed files for the LLM to reference
+          CHANGED_FILES=$(gh pr diff $PR_NUMBER --name-only)
+
+          # Get the actual diff content with line numbers (limit size to avoid token limits)
+          PR_DIFF=$(gh pr diff $PR_NUMBER | head -2000)
+
+          # Check if diff was truncated
+          FULL_DIFF_LINES=$(gh pr diff $PR_NUMBER | wc -l)
+          if [ $FULL_DIFF_LINES -gt 2000 ]; then
+            DIFF_TRUNCATED="true"
+            echo "Warning: PR diff is large ($FULL_DIFF_LINES lines), truncated to 2000 lines for review"
+          else
+            DIFF_TRUNCATED="false"
+          fi
+
+          # Read the template from the external file and substitute variables
+          # Use environment variables for substitution to handle special characters properly
+          export PR_NUMBER REPOSITORY BASE_BRANCH HEAD_BRANCH DIFF_TRUNCATED CHANGED_FILES PR_DIFF
+
+          # Use envsubst for safer variable substitution
+          cat src/prompts/code-review-instructions.md | envsubst > /tmp/code-review-instruction.txt
+
+      - name: Generate PR Review
+        uses: ./
+        with:
+          llm_provider: "openai"
+          llm_api_key: ${{ secrets.OPENAI_API_KEY }}
+          model: "gpt-4o-mini"
+          llm_temperature: "0.3"
+          llm_max_tokens: "4000"
+          post_comment: "true"
+          comment_type: "review"
+          review_event: "COMMENT"
+          use_inline_comments: "true"
+          inline_comment_strategy: "review_with_comments"
+          pull_number: ${{ github.event.pull_request.number }}
+          repo_name: ${{ github.repository }}
+          github_token: ${{ secrets.CODEREVIEW_GITHUB_TOKEN }}
+          instruction_file: /tmp/code-review-instruction.txt

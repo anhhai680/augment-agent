@@ -3,6 +3,7 @@
  */
 
 import { PullRequestFile } from './github';
+import type { AzureDevOpsTemplateContext } from './azure-devops-context.js';
 
 export interface GithubRepo {
   full_name: string;
@@ -30,9 +31,15 @@ export interface PRData {
 }
 
 export interface TemplateContext {
+  // Platform information
+  platform: 'github';
+
   // PR-related context (if PR info provided)
   pr?: PRData;
 
   // Custom context (parsed from JSON)
   custom?: Record<string, any>;
 }
+
+// Union type for all possible template contexts
+export type AnyTemplateContext = TemplateContext | AzureDevOpsTemplateContext;

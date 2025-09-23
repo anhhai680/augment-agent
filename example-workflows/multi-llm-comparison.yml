@@ -1,0 +1,74 @@
+name: Augment Agent - Multi-LLM Comparison
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  multi-llm-comparison:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        llm_config:
+          - { provider: "openai", model: "gpt-4", secret: "OPENAI_API_KEY", name: "OpenAI GPT-4" }
+          - {
+              provider: "claude",
+              model: "claude-3-sonnet-20240229",
+              secret: "ANTHROPIC_API_KEY",
+              name: "Claude Sonnet",
+            }
+          - {
+              provider: "google",
+              model: "gemini-pro",
+              secret: "GOOGLE_API_KEY",
+              name: "Google Gemini",
+            }
+          - { provider: "auggie", model: "default", secret: "AUGMENT_SESSION_AUTH", name: "Auggie" }
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create instruction file
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          LLM_NAME: ${{ matrix.llm_config.name }}
+        run: |
+          cat > /tmp/multi-llm-instruction.txt << EOF
+          Perform a comprehensive code review of the following pull request using $LLM_NAME:
+
+          **Pull Request Information:**
+          - PR Number: ${PR_NUMBER}
+          - Repository: ${REPOSITORY}
+          - Base Branch: ${BASE_BRANCH}
+          - Head Branch: ${HEAD_BRANCH}
+
+          **Review Focus:**
+          Analyze the modified files and provide detailed feedback on:
+          - Code quality and adherence to best practices
+          - Potential bugs, errors, or security vulnerabilities
+          - Performance implications of the changes
+          - Suggestions for improvement or optimization
+          - Any missing error handling or edge cases
+          - Code maintainability and readability
+
+          Please provide specific, actionable feedback with file and line references where applicable.
+          Focus on the actual code changes and their impact on the codebase.
+
+          Please post your review as a review comment on the PR. Do not approve or request changes.
+          EOF
+
+      - name: ${{ matrix.llm_config.name }} Code Review
+        uses: augmentcode/augment-agent@v0
+        with:
+          llm_provider: ${{ matrix.llm_config.provider }}
+          augment_session_auth: ${{ matrix.llm_config.provider == 'auggie' && secrets[matrix.llm_config.secret] || '' }}
+          llm_api_key: ${{ matrix.llm_config.provider != 'auggie' && secrets[matrix.llm_config.secret] || '' }}
+          model: ${{ matrix.llm_config.model }}
+          llm_temperature: "0.3"
+          llm_max_tokens: "4000"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          instruction_file: /tmp/multi-llm-instruction.txt

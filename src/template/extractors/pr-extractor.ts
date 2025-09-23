@@ -60,7 +60,11 @@ export class PRExtractor extends BaseExtractor<PRData> {
    * Performs the actual PR data extraction
    */
   protected async performExtraction(inputs: ActionInputs): Promise<PRData> {
-    const pullNumber = inputs.pullNumber!;
+    if (!inputs.pullNumber || inputs.pullNumber <= 0) {
+      throw new Error('Pull request number is required and must be positive');
+    }
+
+    const pullNumber = inputs.pullNumber;
 
     // Get or create GitHubService lazily
     const githubService = this.githubService;

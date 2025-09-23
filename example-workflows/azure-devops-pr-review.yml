@@ -1,0 +1,60 @@
+name: Augment Agent - Azure DevOps PR Review
+on:
+  workflow_dispatch:
+    inputs:
+      azure_devops_pull_request_id:
+        description: "Azure DevOps Pull Request ID"
+        required: true
+        type: string
+
+jobs:
+  azure-devops-pr-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create instruction file
+        env:
+          AZURE_DEVOPS_PULL_REQUEST_ID: ${{ inputs.azure_devops_pull_request_id }}
+          AZURE_DEVOPS_ORGANIZATION: ${{ vars.AZURE_DEVOPS_ORGANIZATION }}
+          AZURE_DEVOPS_PROJECT: ${{ vars.AZURE_DEVOPS_PROJECT }}
+          AZURE_DEVOPS_REPOSITORY: ${{ vars.AZURE_DEVOPS_REPOSITORY }}
+        run: |
+          cat > /tmp/azure-devops-review-instruction.txt << EOF
+          Perform a comprehensive code review of the following Azure DevOps pull request:
+
+          **Pull Request Information:**
+          - PR ID: ${AZURE_DEVOPS_PULL_REQUEST_ID}
+          - Organization: ${AZURE_DEVOPS_ORGANIZATION}
+          - Project: ${AZURE_DEVOPS_PROJECT}
+          - Repository: ${AZURE_DEVOPS_REPOSITORY}
+
+          **Review Focus:**
+          Analyze the modified files and provide detailed feedback on:
+          - Code quality and adherence to best practices
+          - Potential bugs, errors, or security vulnerabilities
+          - Performance implications of the changes
+          - Suggestions for improvement or optimization
+          - Any missing error handling or edge cases
+          - Code maintainability and readability
+          - Azure DevOps specific considerations (branch policies, work items, etc.)
+
+          Please provide specific, actionable feedback with file and line references where applicable.
+          Focus on the actual code changes and their impact on the codebase.
+
+          Please post your review as a comment on the Azure DevOps pull request.
+          EOF
+
+      - name: Azure DevOps PR Review
+        uses: augmentcode/augment-agent@v0
+        with:
+          augment_session_auth: ${{ secrets.AUGMENT_SESSION_AUTH }}
+          platform: "azure-devops"
+          azure_devops_token: ${{ secrets.AZURE_DEVOPS_TOKEN }}
+          azure_devops_organization: ${{ vars.AZURE_DEVOPS_ORGANIZATION }}
+          azure_devops_project: ${{ vars.AZURE_DEVOPS_PROJECT }}
+          azure_devops_repository: ${{ vars.AZURE_DEVOPS_REPOSITORY }}
+          azure_devops_pull_request_id: ${{ inputs.azure_devops_pull_request_id }}
+          instruction_file: /tmp/azure-devops-review-instruction.txt

@@ -43,6 +43,73 @@ inputs:
   model:
     description: "Model to use; forwarded to auggie as --model"
     required: false
+  platform:
+    description: "Platform to use for context extraction (github or azure-devops)"
+    required: false
+    default: "github"
+  azure_devops_token:
+    description: "Azure DevOps Personal Access Token (PAT). Store as repository secret for security."
+    required: false
+  azure_devops_organization:
+    description: "Azure DevOps organization name"
+    required: false
+  azure_devops_project:
+    description: "Azure DevOps project name"
+    required: false
+  azure_devops_repository:
+    description: "Azure DevOps repository name"
+    required: false
+  azure_devops_pull_request_id:
+    description: "Azure DevOps pull request ID for context extraction"
+    required: false
+  azure_devops_work_item_id:
+    description: "Azure DevOps work item ID for context extraction"
+    required: false
+  azure_devops_build_id:
+    description: "Azure DevOps build ID for context extraction"
+    required: false
+  llm_provider:
+    description: "LLM provider to use (auggie, openai, claude, google)"
+    required: false
+    default: "auggie"
+  llm_api_key:
+    description: "API key for the selected LLM provider. Store as repository secret for security."
+    required: false
+  llm_base_url:
+    description: "Base URL for the LLM provider API (for custom endpoints)"
+    required: false
+  llm_temperature:
+    description: "Temperature setting for LLM generation (0.0 to 2.0)"
+    required: false
+    default: "0.7"
+  llm_max_tokens:
+    description: "Maximum tokens for LLM response"
+    required: false
+    default: "4000"
+  llm_timeout:
+    description: "Timeout for LLM API requests in milliseconds"
+    required: false
+    default: "30000"
+  post_comment:
+    description: "Whether to post the response as a PR comment (true/false)"
+    required: false
+    default: "false"
+  comment_type:
+    description: "Type of comment to post (comment, review)"
+    required: false
+    default: "comment"
+  review_event:
+    description: "Review event type when comment_type is 'review' (COMMENT, APPROVE, REQUEST_CHANGES)"
+    required: false
+    default: "COMMENT"
+  use_inline_comments:
+    description: "Whether to post inline comments on specific lines (true/false)"
+    required: false
+    default: "false"
+  inline_comment_strategy:
+    description: "Strategy for inline comments (review_with_comments, individual_comments)"
+    required: false
+    default: "review_with_comments"
 
 runs:
   using: "composite"
@@ -74,3 +141,22 @@ runs:
         INPUT_REPO_NAME: ${{ inputs.repo_name }}
         INPUT_CUSTOM_CONTEXT: ${{ inputs.custom_context }}
         INPUT_MODEL: ${{ inputs.model }}
+        INPUT_PLATFORM: ${{ inputs.platform }}
+        INPUT_AZURE_DEVOPS_TOKEN: ${{ inputs.azure_devops_token }}
+        INPUT_AZURE_DEVOPS_ORGANIZATION: ${{ inputs.azure_devops_organization }}
+        INPUT_AZURE_DEVOPS_PROJECT: ${{ inputs.azure_devops_project }}
+        INPUT_AZURE_DEVOPS_REPOSITORY: ${{ inputs.azure_devops_repository }}
+        INPUT_AZURE_DEVOPS_PULL_REQUEST_ID: ${{ inputs.azure_devops_pull_request_id }}
+        INPUT_AZURE_DEVOPS_WORK_ITEM_ID: ${{ inputs.azure_devops_work_item_id }}
+        INPUT_AZURE_DEVOPS_BUILD_ID: ${{ inputs.azure_devops_build_id }}
+        INPUT_LLM_PROVIDER: ${{ inputs.llm_provider }}
+        INPUT_LLM_API_KEY: ${{ inputs.llm_api_key }}
+        INPUT_LLM_BASE_URL: ${{ inputs.llm_base_url }}
+        INPUT_LLM_TEMPERATURE: ${{ inputs.llm_temperature }}
+        INPUT_LLM_MAX_TOKENS: ${{ inputs.llm_max_tokens }}
+        INPUT_LLM_TIMEOUT: ${{ inputs.llm_timeout }}
+        INPUT_POST_COMMENT: ${{ inputs.post_comment }}
+        INPUT_COMMENT_TYPE: ${{ inputs.comment_type }}
+        INPUT_REVIEW_EVENT: ${{ inputs.review_event }}
+        INPUT_USE_INLINE_COMMENTS: ${{ inputs.use_inline_comments }}
+        INPUT_INLINE_COMMENT_STRATEGY: ${{ inputs.inline_comment_strategy }}

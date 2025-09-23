@@ -7,7 +7,7 @@ import { resolve } from 'node:path';
 import { FileUtils } from '../utils/file-utils.js';
 import { logger } from '../utils/logger.js';
 import { ERROR, PATHS } from '../config/constants.js';
-import type { TemplateContext } from '../types/context.js';
+import type { AnyTemplateContext } from '../types/context.js';
 import { ActionInputs } from '../types/inputs.js';
 
 export class TemplateEngine {
@@ -31,10 +31,13 @@ export class TemplateEngine {
   }
 
   static create(inputs: ActionInputs): TemplateEngine {
-    return new TemplateEngine(inputs.templateDirectory!);
+    if (!inputs.templateDirectory) {
+      throw new Error('Template directory is required');
+    }
+    return new TemplateEngine(inputs.templateDirectory);
   }
 
-  async renderTemplate(templateName: string, context: TemplateContext): Promise<string> {
+  async renderTemplate(templateName: string, context: AnyTemplateContext): Promise<string> {
     try {
       // Validate template file exists and is safe
       await FileUtils.validateTemplateFile(this.templateDirectory, templateName);

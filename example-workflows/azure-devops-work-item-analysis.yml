@@ -1,0 +1,93 @@
+name: Augment Agent - Azure DevOps Work Item Analysis
+on:
+  workflow_dispatch:
+    inputs:
+      work_item_id:
+        description: "Azure DevOps Work Item ID"
+        required: true
+        type: string
+
+jobs:
+  azure-devops-work-item-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create template directory
+        run: |
+          mkdir -p .github/templates
+
+      - name: Create Azure DevOps work item analysis template
+        run: |
+          cat > .github/templates/azure-devops-work-item-analysis.njk << 'EOF'
+          Analyze Azure DevOps Work Item #{{ workItem.id }}: "{{ workItem.title }}"
+
+          **Work Item Information:**
+          - ID: {{ workItem.id }}
+          - Type: {{ workItem.workItemType }}
+          - State: {{ workItem.state }}
+          - Priority: {{ workItem.priority }}
+          - Severity: {{ workItem.severity }}
+          - Team Project: {{ workItem.teamProject }}
+          - Area Path: {{ workItem.areaPath }}
+          - Iteration Path: {{ workItem.iterationPath }}
+
+          **People:**
+          - Assigned To: {{ workItem.assignedTo }}
+          - Created By: {{ workItem.createdBy }}
+          - Changed By: {{ workItem.changedBy }}
+
+          **Timeline:**
+          - Created: {{ workItem.createdDate }}
+          - Last Changed: {{ workItem.changedDate }}
+
+          {% if workItem.tags %}
+          **Tags:** {{ workItem.tags }}
+          {% endif %}
+
+          {% if workItem.description %}
+          **Description:**
+          {{ workItem.description }}
+          {% endif %}
+
+          **Analysis Request:**
+          Please provide a comprehensive analysis of this work item including:
+
+          1. **Requirements Analysis**: Break down the requirements and identify any gaps or ambiguities
+          2. **Technical Impact**: Assess the technical complexity and implementation approach
+          3. **Dependencies**: Identify any dependencies on other work items, systems, or teams
+          4. **Risk Assessment**: Evaluate potential risks and mitigation strategies
+          5. **Effort Estimation**: Provide a rough effort estimation for implementation
+          6. **Testing Strategy**: Suggest testing approaches and test cases
+          7. **Documentation Needs**: Identify what documentation should be created or updated
+
+          {% if custom.focus_area %}
+          **Focus Area:** {{ custom.focus_area }}
+          {% endif %}
+
+          {% if custom.team_context %}
+          **Team Context:** {{ custom.team_context }}
+          {% endif %}
+
+          Please provide actionable insights and recommendations for this work item.
+          EOF
+
+      - name: Azure DevOps Work Item Analysis
+        uses: augmentcode/augment-agent@v0
+        with:
+          augment_session_auth: ${{ secrets.AUGMENT_SESSION_AUTH }}
+          platform: "azure-devops"
+          azure_devops_token: ${{ secrets.AZURE_DEVOPS_TOKEN }}
+          azure_devops_organization: ${{ vars.AZURE_DEVOPS_ORGANIZATION }}
+          azure_devops_project: ${{ vars.AZURE_DEVOPS_PROJECT }}
+          azure_devops_work_item_id: ${{ github.event.inputs.work_item_id }}
+          template_directory: ".github/templates"
+          template_name: "azure-devops-work-item-analysis.njk"
+          custom_context: |
+            {
+              "focus_area": "requirements-analysis",
+              "team_context": "development-team",
+              "analysis_depth": "comprehensive"
+            }

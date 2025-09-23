@@ -14,9 +14,13 @@ jobs:
       pull-requests: write
     steps:
       - name: Generate PR Review
-        uses: augmentcode/review-pr@v0
+        uses: anhhai680/augment-agent@v0.2.0
         with:
-          augment_session_auth: ${{ secrets.AUGMENT_SESSION_AUTH }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          llm_provider: "openai"
+          llm_api_key: ${{ secrets.OPENAI_API_KEY }}
+          model: "gpt-4.1-mini"
+          llm_temperature: "0.3"
+          llm_max_tokens: "4000"
+          github_token: ${{ secrets.CODEREVIEW_GITHUB_TOKEN }}
           pull_number: ${{ github.event.pull_request.number }}
           repo_name: ${{ github.repository }}

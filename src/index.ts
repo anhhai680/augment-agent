@@ -5,52 +5,12 @@
  * Main entry point for the action
  */
 
-import { spawn, SpawnOptions } from 'child_process';
 import process from 'process';
 import { ValidationUtils } from './utils/validation.js';
 import { TemplateProcessor } from './template/template-processor.js';
+import { LLMFactory } from './services/llm/llm-factory.js';
 import { logger } from './utils/logger.js';
 import { ActionInputs } from './types/inputs.js';
-
-/**
- * Execute a shell command and return a promise
- */
-function execCommand(
-  command: string,
-  args: string[] = [],
-  options: SpawnOptions = {}
-): Promise<number> {
-  return new Promise((resolve, reject) => {
-    // Join command and args into a single shell command for proper quoting
-    const fullCommand = `${command} ${args
-      .map(arg => {
-        // Properly quote arguments that contain spaces or special characters
-        if (arg.includes(' ') || arg.includes('"') || arg.includes("'")) {
-          return `"${arg.replace(/"/g, '\\"')}"`;
-        }
-        return arg;
-      })
-      .join(' ')}`;
-
-    const child = spawn(fullCommand, [], {
-      stdio: 'inherit',
-      shell: true,
-      ...options,
-    });
-
-    child.on('close', code => {
-      if (code === 0) {
-        resolve(code);
-      } else {
-        reject(new Error(`Command failed with exit code ${code}`));
-      }
-    });
-
-    child.on('error', error => {
-      reject(error);
-    });
-  });
-}
 
 /**
  * Set up environment variables for the augment script
@@ -93,11 +53,12 @@ async function processTemplate(inputs: ActionInputs): Promise<string> {
 }
 
 /**
- * Run the augment script with appropriate arguments
+ * Run the LLM with appropriate provider
  */
-async function runAugmentScript(inputs: ActionInputs): Promise<void> {
+async function runLLM(inputs: ActionInputs): Promise<void> {
   let instruction_value: string;
   let is_file: boolean;
+
   if (inputs.instruction) {
     instruction_value = inputs.instruction;
     is_file = false;
@@ -113,20 +74,229 @@ async function runAugmentScript(inputs: ActionInputs): Promise<void> {
       instructionFile: instruction_value,
     });
   }
-  const args = ['--print'];
-  if (inputs.model && inputs.model.trim().length > 0) {
-    args.push('--model', inputs.model.trim());
+
+  // Determine LLM provider
+  const providerType = inputs.llmProvider || 'auggie';
+  logger.info(`🤖 Using LLM provider: ${providerType}`);
+
+  // Use unified LLM provider system for all providers
+  await runUnifiedLLM(inputs, instruction_value, is_file);
+}
+
+/**
+ * Run LLM with unified provider system
+ */
+async function runUnifiedLLM(
+  inputs: ActionInputs,
+  instruction_value: string,
+  is_file: boolean
+): Promise<void> {
+  try {
+    // Validate required fields for LLM providers
+    if (!inputs.llmProvider) {
+      throw new Error('LLM provider is required for LLM execution');
+    }
+
+    // Only validate API key for non-Auggie providers
+    if (
+      inputs.llmProvider !== 'auggie' &&
+      (!inputs.llmApiKey || inputs.llmApiKey.trim().length === 0)
+    ) {
+      throw new Error(`API key is required for ${inputs.llmProvider} provider`);
+    }
+
+    // Create LLM provider
+    const config: any = {
+      apiKey: inputs.llmApiKey,
+      model: inputs.model || undefined,
+      temperature: inputs.llmTemperature,
+      maxTokens: inputs.llmMaxTokens,
+      timeout: inputs.llmTimeout,
+    };
+
+    // Only add baseUrl if it's defined
+    if (inputs.llmBaseUrl) {
+      config.baseUrl = inputs.llmBaseUrl;
+    }
+
+    const llmProvider = LLMFactory.createProvider(inputs.llmProvider, config);
+
+    // Validate configuration
+    if (!llmProvider.validateConfig()) {
+      throw new Error(`Invalid configuration for ${llmProvider.getProviderName()} provider`);
+    }
+
+    // Read instruction content if it's a file
+    let instructionContent = instruction_value;
+    if (is_file) {
+      const fs = await import('fs/promises');
+      instructionContent = await fs.readFile(instruction_value, 'utf-8');
+    }
+
+    logger.info(`🚀 Generating response with ${llmProvider.getProviderName()}`);
+
+    // Generate response
+    const response = await llmProvider.generateResponse(instructionContent);
+
+    // Output the response to console
+    console.log(response.content);
+
+    // Post comment to PR if requested and we have the necessary context
+    await postCommentIfRequested(inputs, response.content);
+
+    // Log usage information if available
+    if (response.usage) {
+      logger.info('📊 Token usage', {
+        promptTokens: response.usage.promptTokens,
+        completionTokens: response.usage.completionTokens,
+        totalTokens: response.usage.totalTokens,
+      });
+    }
+
+    logger.info('✅ Augment Agent completed successfully');
+  } catch (error) {
+    logger.error('LLM provider failed', error);
+    throw error;
   }
-  if (is_file) {
-    logger.info(`📄 Using instruction file: ${instruction_value}`);
-    args.push('--instruction-file');
+}
+
+/**
+ * Post comment to PR if requested and context is available
+ */
+async function postCommentIfRequested(inputs: ActionInputs, content: string): Promise<void> {
+  // Check if we should post a comment
+  if (!inputs.postComment) {
+    logger.debug('Comment posting not requested');
+    return;
+  }
+
+  // Check if we have the necessary context for posting comments
+  if (!inputs.githubToken || !inputs.repoName || !inputs.pullNumber) {
+    logger.warning(
+      'Cannot post comment: missing required context (github_token, repo_name, pull_number)'
+    );
+    return;
+  }
+
+  try {
+    // Import required services
+    const { GitHubService } = await import('./services/github-service.js');
+    const { ValidationUtils } = await import('./utils/validation.js');
+    const { ReviewParser } = await import('./services/review-parser.js');
+
+    // Parse repository information
+    const repoInfo = ValidationUtils.parseRepoName(inputs.repoName);
+
+    // Create GitHub service
+    const githubService = new GitHubService({
+      token: inputs.githubToken,
+      owner: repoInfo.owner,
+      repo: repoInfo.repo,
+    });
+
+    // Log all relevant input flags for debugging
+    logger.info('Comment posting configuration:', {
+      postComment: inputs.postComment,
+      useInlineComments: inputs.useInlineComments,
+      inlineCommentStrategy: inputs.inlineCommentStrategy,
+      commentType: inputs.commentType,
+      reviewEvent: inputs.reviewEvent,
+    });
+
+    // Check if inline comments are requested
+    if (inputs.useInlineComments) {
+      logger.info(`📝 Processing inline comments for PR #${inputs.pullNumber}`);
+      logger.debug('Inline comment settings:', {
+        useInlineComments: inputs.useInlineComments,
+        strategy: inputs.inlineCommentStrategy || 'review_with_comments',
+      });
+
+      // Parse the review content for structured comments
+      const parsedReview = ReviewParser.parseReview(content);
+
+      logger.info(`Review parsing result: ${parsedReview.comments.length} comments found`, {
+        hasInlineComments: parsedReview.hasInlineComments,
+        summaryLength: parsedReview.summary.length,
+      });
+
+      if (parsedReview.comments && parsedReview.comments.length > 0) {
+        const strategy = inputs.inlineCommentStrategy || 'review_with_comments';
+
+        logger.info(`Using strategy: ${strategy} for ${parsedReview.comments.length} comments`);
+
+        if (strategy === 'review_with_comments') {
+          // Post all comments as part of a single review
+          logger.info(
+            `📝 Posting ${parsedReview.comments.length} inline comments as review to PR #${inputs.pullNumber}`
+          );
+          const reviewEvent = inputs.reviewEvent || 'COMMENT';
+          await githubService.createPullRequestReviewWithComments(
+            inputs.pullNumber,
+            parsedReview.summary || 'Code review',
+            parsedReview.comments,
+            reviewEvent as 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES'
+          );
+        } else if (strategy === 'individual_comments') {
+          // Post each comment individually
+          logger.info(
+            `� Posting ${parsedReview.comments.length} individual inline comments to PR #${inputs.pullNumber}`
+          );
+          for (const comment of parsedReview.comments) {
+            await githubService.createIndividualReviewComment(inputs.pullNumber, comment);
+          }
+
+          // Also post a summary comment if available
+          if (parsedReview.summary) {
+            await githubService.createPullRequestComment(inputs.pullNumber, parsedReview.summary);
+          }
+        }
+
+        logger.info('✅ Inline comments posted successfully');
+      } else {
+        // Fall back to regular comment if no structured comments found
+        logger.warning('No structured comments found, falling back to regular comment');
+        logger.debug('Parsed review details:', {
+          summaryLength: parsedReview.summary.length,
+          commentsFound: parsedReview.comments.length,
+          hasInlineComments: parsedReview.hasInlineComments,
+        });
+        await postRegularComment(githubService, inputs, content);
+      }
+    } else {
+      // Post regular comment
+      logger.info('Inline comments disabled, posting regular comment');
+      await postRegularComment(githubService, inputs, content);
+    }
+  } catch (error) {
+    logger.error('Failed to post comment to PR', error);
+    // Don't throw the error - the main task was successful even if comment posting failed
+  }
+}
+
+/**
+ * Post a regular comment (non-inline)
+ */
+async function postRegularComment(
+  githubService: any,
+  inputs: ActionInputs,
+  content: string
+): Promise<void> {
+  const commentType = inputs.commentType || 'comment';
+
+  if (commentType === 'review') {
+    const reviewEvent = inputs.reviewEvent || 'COMMENT';
+    logger.info(`📝 Posting review comment to PR #${inputs.pullNumber} with event: ${reviewEvent}`);
+    await githubService.createPullRequestReview(
+      inputs.pullNumber,
+      content,
+      reviewEvent as 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES'
+    );
   } else {
-    logger.info('📝 Using direct instruction');
-    args.push('--instruction');
+    logger.info(`💬 Posting comment to PR #${inputs.pullNumber}`);
+    await githubService.createPullRequestComment(inputs.pullNumber, content);
   }
-  args.push(instruction_value);
-  await execCommand('auggie', args);
-  logger.info('✅ Augment Agent completed successfully');
+
+  logger.info('✅ Comment posted successfully');
 }
 
 /**
@@ -141,7 +311,7 @@ async function main(): Promise<void> {
     setupEnvironment(inputs);
 
     logger.info('🚀 Starting Augment Agent...');
-    await runAugmentScript(inputs);
+    await runLLM(inputs);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.setFailed(errorMessage);
